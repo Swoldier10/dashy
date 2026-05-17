@@ -1,0 +1,1712 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Fraunces', ui-serif, Georgia, serif;
+
+    --color-zinc-50: #fafafa;
+    --color-zinc-100: #f5f5f5;
+    --color-zinc-200: #e5e5e5;
+    --color-zinc-300: #d4d4d4;
+    --color-zinc-400: #a3a3a3;
+    --color-zinc-500: #737373;
+    --color-zinc-600: #525252;
+    --color-zinc-700: #404040;
+    --color-zinc-800: #262626;
+    --color-zinc-900: #171717;
+    --color-zinc-950: #0a0a0a;
+
+    /* Brand palette — single source of truth */
+    --color-brand-danube: #5992c6;
+    --color-brand-torea: #0a2a92;
+    --color-brand-cocoa: #31241f;
+    --color-brand-shilo: #e9b8c9;
+
+    /* Semantic state colors */
+    --color-state-success: #7fc9a0;
+    --color-state-error: #d97a7a;
+    --color-state-warning: #e0b884;
+
+    /* Ink scale */
+    --color-ink: #f1e8d8;
+    --color-ink-muted: #a89c89;
+    --color-ink-dim: #6a6253;
+}
+
+/* ============================================================
+   Bare brand tokens at :root — same values as .dashy-body, but
+   available everywhere for utility classes like
+   bg-[var(--surface)] / text-[var(--ink-muted)]. The .dashy-body
+   class still layers the gradient backdrop on top.
+
+   Light theme: cream page bg, white surfaces, charcoal ink.
+   Brand action colors (Danube / Torea Bay / Shilo) unchanged.
+   Cocoa is preserved as a dark accent for pills and avatars.
+   ============================================================ */
+:root {
+    --bg: #f5f3ef;
+    --bg-deep: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f0eee9;
+    --ink: #1a1a1a;
+    --ink-muted: #6b6b6b;
+    --ink-dim: #9a9a9a;
+    --accent: #e9b8c9;
+    --blue: #5992c6;
+    --blue-soft: #7eaad6;
+    --blue-deep: #0a2a92;
+    --cocoa: #31241f;
+    --state-success: #7fc9a0;
+    --state-error: #d97a7a;
+    --state-warning: #e0b884;
+    --border: rgba(26, 26, 26, 0.08);
+    --border-mid: rgba(26, 26, 26, 0.12);
+    --border-strong: rgba(26, 26, 26, 0.18);
+}
+
+@layer base {
+
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+/* ============================================================
+   DASHY THEME — derives every value from brand tokens.
+   No raw hex/rgb in components below. Add new colors here.
+   ============================================================ */
+
+.dashy-body {
+    /* Brand RGB triplets (for rgba-with-alpha use) */
+    --brand-danube-rgb: 89, 146, 198;
+    --brand-torea-rgb: 10, 42, 146;
+    --brand-cocoa-rgb: 49, 36, 31;
+    --brand-shilo-rgb: 233, 184, 201;
+
+    /* Surfaces — light theme */
+    --bg:           #f5f3ef;          /* warm cream page bg */
+    --bg-rgb:       245, 243, 239;
+    --bg-deep:      #ffffff;          /* nested inputs / sidebar surface */
+    --bg-deep-rgb:  255, 255, 255;
+    --surface:      #ffffff;          /* cards, panels */
+    --surface-rgb:  255, 255, 255;
+    --surface-2:    #f0eee9;          /* hover / section bg */
+
+    /* Ink (text) — charcoal on cream */
+    --ink:          #1a1a1a;
+    --ink-rgb:      26, 26, 26;
+    --ink-muted:    #6b6b6b;
+    --ink-dim:      #9a9a9a;
+
+    /* Action — Danube primary, Torea Bay deep (brand, unchanged) */
+    --blue:         var(--color-brand-danube);
+    --blue-soft:    #7eaad6;
+    --blue-deep:    var(--color-brand-torea);
+    --blue-italic:  var(--color-brand-danube);
+
+    /* Accent — Shilo for decorative moments */
+    --accent:       var(--color-brand-shilo);
+
+    /* Cocoa — dark accent for pills, avatar bg, active dark tabs */
+    --cocoa:        var(--color-brand-cocoa);
+
+    /* State */
+    --state-success:     var(--color-state-success);
+    --state-success-rgb: 127, 201, 160;
+    --state-success-strong: #4ea679;
+    --state-error:       var(--color-state-error);
+    --state-error-rgb:   217, 122, 122;
+    --state-warning:     var(--color-state-warning);
+    --state-warning-rgb: 224, 184, 132;
+    --state-info-rgb:    var(--brand-danube-rgb);
+
+    /* Borders — derived from ink */
+    --border:        rgba(var(--ink-rgb), 0.08);
+    --border-mid:    rgba(var(--ink-rgb), 0.12);
+    --border-strong: rgba(var(--ink-rgb), 0.18);
+
+    background-color: var(--bg);
+    background-image:
+        radial-gradient(ellipse 60% 40% at 80% 0%, rgba(var(--brand-shilo-rgb), 0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 50% at 0% 100%, rgba(var(--brand-danube-rgb), 0.06) 0%, transparent 70%);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+}
+
+.font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+}
+
+/* ---------- Decorative giant 'd' (Shilo accent at low opacity) ---------- */
+.dashy-mark {
+    position: absolute;
+    bottom: -180px;
+    right: -90px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 780px;
+    line-height: 0.8;
+    color: rgba(var(--brand-shilo-rgb), 0.035);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+}
+
+/* ---------- Status pulse ---------- */
+.dashy-pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--state-success);
+    box-shadow: 0 0 0 0 rgba(var(--state-success-rgb), 0.55);
+    animation: dashy-pulse 2.4s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+@keyframes dashy-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--state-success-rgb), 0.55); }
+    70%  { box-shadow: 0 0 0 9px rgba(var(--state-success-rgb), 0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--state-success-rgb), 0); }
+}
+
+.dashy-pulse-blue {
+    box-shadow: 0 0 0 0 rgba(var(--brand-danube-rgb), 0.5);
+    animation: dashy-pulse-blue 2.6s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
+@keyframes dashy-pulse-blue {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--brand-danube-rgb), 0.55); }
+    70%  { box-shadow: 0 0 0 7px rgba(var(--brand-danube-rgb), 0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--brand-danube-rgb), 0); }
+}
+
+/* ---------- Card ---------- */
+.dashy-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 30px;
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
+        0 20px 50px -24px rgba(var(--ink-rgb), 0.18);
+}
+
+/* ---------- Form atoms ---------- */
+.dashy-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+}
+
+.dashy-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+textarea.dashy-input {
+    resize: none;
+}
+
+.dashy-input::placeholder {
+    color: var(--ink-dim);
+}
+
+.dashy-input:hover {
+    border-color: var(--border-strong);
+}
+
+.dashy-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+
+/* ---------- Settings modal row layout ---------- */
+.dashy-settings-pane .dashy-input,
+.dashy-settings-pane .dashy-select {
+    padding: 8px 12px;
+    font-size: 13.5px;
+    border-radius: 8px;
+}
+
+.dashy-settings-section + .dashy-settings-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+.dashy-settings-section-head {
+    margin-bottom: 4px;
+}
+.dashy-settings-section-head h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--ink);
+}
+.dashy-settings-section-head p {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--ink-muted);
+}
+
+.dashy-settings-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+}
+.dashy-settings-row:first-child { border-top: none; }
+.dashy-settings-row-label {
+    min-width: 0;
+}
+.dashy-settings-row-label > .row-label-text {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.3;
+}
+.dashy-settings-row-label > .row-label-desc {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+}
+.dashy-settings-row-value {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .dashy-settings-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+    }
+    .dashy-settings-row-label { flex: 1; }
+    .dashy-settings-row-value {
+        flex-shrink: 0;
+        width: auto;
+        min-width: 240px;
+        max-width: 300px;
+    }
+}
+
+/* ---------- Custom checkbox ---------- */
+.dashy-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: #fff;
+    transition: all .18s ease;
+}
+.dashy-checkbox input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+.dashy-checkbox .dashy-check { opacity: 0; transition: opacity .15s ease; }
+.dashy-checkbox:has(input:checked) {
+    background: var(--blue);
+    border-color: var(--blue);
+}
+.dashy-checkbox:has(input:checked) .dashy-check { opacity: 1; }
+.dashy-checkbox:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.22);
+}
+
+/* ---------- Buttons ---------- */
+.dashy-btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    background: var(--blue);
+    color: var(--color-brand-cocoa);
+    font-weight: 600;
+    font-size: 14.5px;
+    letter-spacing: -0.005em;
+    padding: 13px 20px;
+    border-radius: 10px;
+    transition: transform .18s ease, background .18s ease, box-shadow .25s ease;
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.18) inset,
+        0 6px 18px -8px rgba(var(--brand-danube-rgb), 0.4);
+    cursor: pointer;
+}
+.dashy-btn-primary:hover {
+    background: var(--blue-soft);
+    transform: translateY(-1px);
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.22) inset,
+        0 10px 24px -8px rgba(var(--brand-danube-rgb), 0.5);
+}
+.dashy-btn-primary:active { transform: translateY(0); }
+
+.dashy-btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 500;
+    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    transition: background .18s ease, border-color .18s ease;
+    cursor: pointer;
+}
+.dashy-btn-secondary:hover {
+    background: var(--surface-2);
+    border-color: rgba(var(--ink-rgb), 0.22);
+}
+
+/* ---------- Divider ---------- */
+.dashy-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--ink-dim);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+}
+.dashy-divider::before,
+.dashy-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-mid);
+}
+
+/* ---------- Reveal animation ---------- */
+.dashy-fade {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: dashy-fade-up .85s cubic-bezier(.2, .65, .25, 1) forwards;
+    animation-delay: var(--delay, 0ms);
+}
+
+@keyframes dashy-fade-up {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Headline ---------- */
+.dashy-headline {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-size: clamp(56px, 8.4vw, 122px);
+    font-weight: 600;
+    line-height: 0.93;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+}
+.dashy-headline em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--blue-italic);
+    letter-spacing: -0.018em;
+}
+
+/* ---------- Eyebrow ---------- */
+.dashy-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--blue);
+}
+
+/* ---------- Stats row ---------- */
+.dashy-stats {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    font-size: 13.5px;
+}
+.dashy-stats > div { display: flex; gap: 6px; align-items: baseline; }
+.dashy-stats strong { font-weight: 600; color: var(--ink); }
+.dashy-stats span { color: var(--ink-muted); }
+
+/* ---------- Logo mark ---------- */
+.dashy-logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+}
+
+/* ---------- Smaller headline variant (register) ---------- */
+.dashy-headline--md {
+    font-size: clamp(48px, 6.5vw, 92px);
+    line-height: 0.96;
+    letter-spacing: -0.025em;
+}
+
+/* ---------- Select ---------- */
+.dashy-select-wrap {
+    position: relative;
+}
+.dashy-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 12px 36px 12px 14px;
+    width: 100%;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+    cursor: pointer;
+}
+.dashy-select:hover { border-color: var(--border-strong); }
+.dashy-select:focus {
+    outline: none;
+    border-color: var(--blue);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+.dashy-select option {
+    background: var(--surface);
+    color: var(--ink);
+}
+.dashy-select-chevron {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    pointer-events: none;
+}
+.dashy-select[data-empty="true"] {
+    color: var(--ink-dim);
+}
+
+/* ---------- Password strength bars ---------- */
+.dashy-strength {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+}
+.dashy-strength > span {
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(var(--ink-rgb), 0.07);
+    transition: background .25s ease;
+}
+.dashy-strength > span.is-on {
+    background: var(--blue);
+}
+
+/* ---------- Trust row ---------- */
+.dashy-trust {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    font-size: 13.5px;
+    color: var(--ink);
+}
+.dashy-trust > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.dashy-trust svg {
+    color: var(--blue);
+    flex: none;
+}
+
+/* ---------- Inline form helper text ---------- */
+.dashy-help {
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-top: 4px;
+}
+
+/* ---------- Form error ---------- */
+.dashy-error {
+    font-size: 12px;
+    color: var(--state-error);
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+/* ---------- Header link (sign-in / create-account) ---------- */
+.dashy-header-link {
+    color: var(--blue);
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    text-decoration-thickness: 1.5px;
+    transition: color .18s ease;
+}
+.dashy-header-link:hover { color: var(--blue-soft); }
+
+
+/* ============================================================
+   DASHY UI COMPONENT LAYER
+   Base styles for the <x-dashy-*> Blade component library.
+   Everything below derives from brand tokens above.
+   ============================================================ */
+
+/* ---------- Button ---------- */
+.dashy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 10px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease,
+                border-color .18s ease, transform .18s ease,
+                box-shadow .25s ease, opacity .15s ease;
+    border: 1px solid transparent;
+    user-select: none;
+}
+.dashy-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.32);
+}
+.dashy-btn:disabled,
+.dashy-btn[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* sizes */
+.dashy-btn--sm { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
+.dashy-btn--md { padding: 10px 16px; font-size: 14px; }
+.dashy-btn--lg { padding: 13px 20px; font-size: 14.5px; font-weight: 600; }
+
+/* variants */
+.dashy-btn--primary {
+    background: var(--blue);
+    color: var(--color-brand-cocoa);
+    font-weight: 600;
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.18) inset,
+        0 6px 18px -8px rgba(var(--brand-danube-rgb), 0.4);
+}
+.dashy-btn--primary:hover:not(:disabled) {
+    background: var(--blue-soft);
+    transform: translateY(-1px);
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.22) inset,
+        0 10px 24px -8px rgba(var(--brand-danube-rgb), 0.5);
+}
+.dashy-btn--primary:active:not(:disabled) { transform: translateY(0); }
+
+.dashy-btn--filled {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--border-strong);
+}
+.dashy-btn--filled:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: rgba(var(--ink-rgb), 0.22);
+}
+
+.dashy-btn--ghost {
+    background: transparent;
+    color: var(--ink);
+}
+.dashy-btn--ghost:hover:not(:disabled) {
+    background: rgba(var(--ink-rgb), 0.06);
+}
+
+.dashy-btn--danger {
+    background: rgba(var(--state-error-rgb), 0.12);
+    color: var(--state-error);
+    border-color: rgba(var(--state-error-rgb), 0.35);
+}
+.dashy-btn--danger:hover:not(:disabled) {
+    background: rgba(var(--state-error-rgb), 0.2);
+    border-color: rgba(var(--state-error-rgb), 0.55);
+    color: var(--ink);
+}
+
+.dashy-btn--cocoa {
+    background: var(--cocoa);
+    color: #fff;
+    font-weight: 600;
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.10) inset,
+        0 8px 20px -10px rgba(var(--brand-cocoa-rgb), 0.55);
+}
+.dashy-btn--cocoa:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--cocoa) 88%, #fff);
+    transform: translateY(-1px);
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.14) inset,
+        0 12px 26px -10px rgba(var(--brand-cocoa-rgb), 0.65);
+}
+.dashy-btn--cocoa:active:not(:disabled) { transform: translateY(0); }
+
+.dashy-btn--block { width: 100%; }
+
+
+/* ---------- Task checkbox ----------
+   Round-corner outlined box that fills with Danube when checked. The
+   parent <button> stays a tap target ≥ 44 px on touch tiers via padding.
+*/
+.dashy-task-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: transparent;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.dashy-task-checkbox:hover {
+    border-color: rgba(var(--brand-danube-rgb), 0.55);
+}
+.dashy-task-checkbox[aria-checked='true'] {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+}
+.dashy-task-checkbox[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.dashy-task-checkbox:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+
+/* Hide elements decorated with x-cloak until Alpine initializes them. */
+[x-cloak] { display: none !important; }
+
+
+/* ---------- Pop-in transition (modal/popover/menu) ---------- */
+@keyframes dashy-pop-in {
+    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes dashy-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+.dashy-pop-in {
+    animation: dashy-pop-in .14s cubic-bezier(.2, .65, .25, 1) forwards;
+}
+.dashy-fade-in {
+    animation: dashy-fade-in .14s linear forwards;
+}
+
+
+/* ---------- Modal ---------- */
+.dashy-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(var(--ink-rgb), 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.dashy-modal-shell {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+    pointer-events: none;
+}
+.dashy-modal-card {
+    pointer-events: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    color: var(--ink);
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.8) inset,
+        0 30px 80px -30px rgba(var(--ink-rgb), 0.35);
+    width: 100%;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+.dashy-modal--sm  { max-width: 28rem; }
+.dashy-modal--md  { max-width: 36rem; }
+.dashy-modal--lg  { max-width: 48rem; }
+.dashy-modal--xl  { max-width: 56rem; }
+.dashy-modal--2xl { max-width: 72rem; }
+
+
+/* ---------- Drawer ---------- */
+.dashy-drawer-shell {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    pointer-events: none;
+}
+.dashy-drawer-shell--right { justify-content: flex-end; }
+.dashy-drawer-shell--left  { justify-content: flex-start; }
+.dashy-drawer-card {
+    pointer-events: auto;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    color: var(--ink);
+    height: 100dvh;
+    width: 100%;
+    overflow-y: auto;
+    box-shadow: 0 0 60px -10px rgba(var(--ink-rgb), 0.18);
+    display: flex;
+    flex-direction: column;
+}
+.dashy-drawer-shell--left .dashy-drawer-card {
+    border-left: 0;
+    border-right: 1px solid var(--border);
+}
+.dashy-drawer--sm { max-width: 24rem; }
+.dashy-drawer--md { max-width: 32rem; }
+.dashy-drawer--lg { max-width: 44rem; }
+
+@keyframes dashy-drawer-in-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes dashy-drawer-in-left {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.dashy-drawer-card--right { animation: dashy-drawer-in-right .18s cubic-bezier(.2, .65, .25, 1) forwards; }
+.dashy-drawer-card--left  { animation: dashy-drawer-in-left  .18s cubic-bezier(.2, .65, .25, 1) forwards; }
+
+
+/* ---------- Popover / menu ---------- */
+.dashy-popover-panel {
+    position: absolute;
+    z-index: 50;
+    min-width: 12rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    color: var(--ink);
+    box-shadow:
+        0 1px 0 0 rgba(255, 255, 255, 0.8) inset,
+        0 18px 50px -16px rgba(var(--ink-rgb), 0.22);
+    transform-origin: top right;
+}
+.dashy-popover-panel--align-start  { left: 0; right: auto; transform-origin: top left; }
+.dashy-popover-panel--align-center { left: 50%; transform: translateX(-50%); transform-origin: top center; }
+.dashy-popover-panel--align-end    { right: 0; left: auto; transform-origin: top right; }
+.dashy-popover-panel--position-bottom { top: calc(100% + 6px); }
+.dashy-popover-panel--position-top    { bottom: calc(100% + 6px); top: auto; }
+
+.dashy-menu {
+    display: flex;
+    flex-direction: column;
+    min-width: 12rem;
+}
+.dashy-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--ink);
+    background: transparent;
+    text-align: start;
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+    border: 0;
+    line-height: 1.3;
+}
+.dashy-menu-item:hover,
+.dashy-menu-item:focus-visible,
+.dashy-menu-item[data-active='true'] {
+    background: rgba(var(--ink-rgb), 0.06);
+    color: var(--ink);
+    outline: none;
+}
+.dashy-menu-item[disabled] {
+    opacity: .55;
+    cursor: not-allowed;
+}
+.dashy-menu-item .dashy-menu-item-icon {
+    flex: none;
+    color: var(--ink-muted);
+    width: 16px;
+    height: 16px;
+}
+.dashy-menu-separator {
+    height: 1px;
+    margin: 4px 0;
+    background: var(--border-mid);
+    border: 0;
+}
+
+
+/* ---------- Toaster ---------- */
+.dashy-toaster {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    width: min(calc(100vw - 32px), 22rem);
+}
+.dashy-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    color: var(--ink);
+    box-shadow: 0 18px 40px -16px rgba(var(--ink-rgb), 0.22);
+    animation: dashy-pop-in .16s cubic-bezier(.2, .65, .25, 1) forwards;
+}
+.dashy-toast--success { border-left-color: var(--state-success); }
+.dashy-toast--danger  { border-left-color: var(--state-error); }
+.dashy-toast--warning { border-left-color: var(--state-warning); }
+.dashy-toast--info    { border-left-color: var(--blue); }
+
+.dashy-toast-icon {
+    flex: none;
+    margin-top: 1px;
+    width: 18px;
+    height: 18px;
+}
+.dashy-toast--success .dashy-toast-icon { color: var(--state-success); }
+.dashy-toast--danger  .dashy-toast-icon { color: var(--state-error); }
+.dashy-toast--warning .dashy-toast-icon { color: var(--state-warning); }
+.dashy-toast--info    .dashy-toast-icon { color: var(--blue); }
+
+.dashy-toast-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink);
+}
+.dashy-toast-close {
+    flex: none;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 0;
+    padding: 2px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color .12s ease, background .12s ease;
+}
+.dashy-toast-close:hover { color: var(--ink); background: rgba(var(--ink-rgb), 0.06); }
+
+
+/* ---------- Badge ---------- */
+.dashy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    background: rgba(var(--ink-rgb), 0.07);
+    color: var(--ink);
+    border: 1px solid var(--border-mid);
+}
+.dashy-badge--success { background: rgba(var(--state-success-rgb), 0.12); color: var(--state-success); border-color: rgba(var(--state-success-rgb), 0.32); }
+.dashy-badge--danger  { background: rgba(var(--state-error-rgb), 0.12);   color: var(--state-error);   border-color: rgba(var(--state-error-rgb), 0.32); }
+.dashy-badge--warning { background: rgba(var(--state-warning-rgb), 0.14); color: var(--state-warning); border-color: rgba(var(--state-warning-rgb), 0.34); }
+.dashy-badge--info    { background: rgba(var(--brand-danube-rgb), 0.14);  color: var(--blue);          border-color: rgba(var(--brand-danube-rgb), 0.32); }
+
+
+/* ---------- Callout ---------- */
+.dashy-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--ink);
+}
+.dashy-callout-icon { flex: none; margin-top: 1px; }
+.dashy-callout--info    { border-left: 3px solid var(--blue); }
+.dashy-callout--success { border-left: 3px solid var(--state-success); }
+.dashy-callout--warning { border-left: 3px solid var(--state-warning); }
+.dashy-callout--danger  { border-left: 3px solid var(--state-error); }
+
+
+/* ---------- Avatar ---------- */
+.dashy-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(var(--brand-danube-rgb), 0.18);
+    color: var(--blue-soft);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    user-select: none;
+    flex: none;
+}
+.dashy-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dashy-avatar--xs { width: 22px;  height: 22px;  font-size: 9px; }
+.dashy-avatar--sm { width: 28px;  height: 28px;  font-size: 11px; }
+.dashy-avatar--md { width: 36px;  height: 36px;  font-size: 13px; }
+.dashy-avatar--lg { width: 56px;  height: 56px;  font-size: 18px; }
+
+
+/* ---------- Tabs (segmented pill style) ---------- */
+.dashy-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+.dashy-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.dashy-tab[aria-selected='true'] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.dashy-tab:hover:not([aria-selected='true']) { color: var(--ink); }
+
+
+/* ---------- Empty state ---------- */
+.dashy-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    padding: 36px 24px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 14px;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+}
+.dashy-empty-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--ink-dim);
+}
+.dashy-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.dashy-empty-description {
+    font-size: 13.5px;
+    color: var(--ink-muted);
+    max-width: 32ch;
+}
+
+
+/* ---------- Searchable select ---------- */
+.dashy-searchable-select {
+    position: relative;
+    width: 100%;
+}
+.dashy-searchable-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+    text-align: left;
+    outline: none;
+}
+.dashy-searchable-select-trigger:hover { border-color: var(--border-strong); }
+.dashy-searchable-select-trigger:focus-visible,
+.dashy-searchable-select-trigger[data-open='true'] {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+.dashy-searchable-select-trigger > :first-child { flex: 1; min-width: 0; }
+.dashy-searchable-select-placeholder { color: var(--ink-dim); }
+.dashy-searchable-select-chevron {
+    color: var(--ink-muted);
+    flex: none;
+    display: inline-flex;
+    transition: transform .18s ease;
+}
+.dashy-searchable-select-trigger[data-open='true'] .dashy-searchable-select-chevron {
+    transform: rotate(180deg);
+}
+
+.dashy-searchable-select-search {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+    outline: none;
+}
+.dashy-searchable-select-search::placeholder { color: var(--ink-dim); }
+/* Hide default search affordances so the field reads as a normal input. */
+.dashy-searchable-select-search::-webkit-search-cancel-button,
+.dashy-searchable-select-search::-webkit-search-decoration { -webkit-appearance: none; }
+
+.dashy-searchable-select-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 18rem;
+    overflow-y: auto;
+    margin: 0;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 18px 50px -16px rgba(var(--ink-rgb), 0.22);
+}
+.dashy-searchable-select-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+}
+.dashy-searchable-select-option[data-active='true'] {
+    background: color-mix(in srgb, var(--blue) 22%, transparent);
+    color: var(--ink);
+}
+.dashy-searchable-select-option-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashy-searchable-select-option-check { color: var(--blue); flex: none; display: inline-flex; }
+.dashy-searchable-select-option[data-active='true'] .dashy-searchable-select-option-check { color: var(--ink); }
+.dashy-searchable-select-empty {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink-dim);
+    text-align: center;
+    list-style: none;
+}
+
+
+/* ---------- Section heading ---------- */
+.dashy-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+.dashy-section-heading-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: var(--ink);
+    line-height: 1.2;
+}
+.dashy-section-heading-description {
+    font-size: 13.5px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+}
+
+
+/* ---------- Tooltip ---------- */
+.dashy-tooltip {
+    position: absolute;
+    z-index: 60;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.85);
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
+}
+
+
+/* ---------- Body scroll lock when a modal/drawer is open ---------- */
+body.dashy-scroll-locked { overflow: hidden; }
+
+
+/* ---------- OTP segmented input ---------- */
+.dashy-otp {
+    display: inline-flex;
+    gap: 8px;
+}
+.dashy-otp input {
+    width: 44px;
+    height: 52px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    color: var(--ink);
+    transition: border-color .18s ease, box-shadow .18s ease;
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--blue);
+}
+.dashy-otp input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.22);
+}
+
+
+/* ---------- Search input ---------- */
+.dashy-search {
+    position: relative;
+    width: 100%;
+}
+.dashy-search input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 9px 36px 9px 36px;
+    color: var(--ink);
+    font-size: 13.5px;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.dashy-search input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+.dashy-search input::placeholder { color: var(--ink-dim); }
+.dashy-search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    pointer-events: none;
+}
+.dashy-search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 3px;
+    border-radius: 6px;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+.dashy-search-clear:hover { color: var(--ink); background: rgba(var(--ink-rgb), 0.06); }
+
+
+/* ---------- Date picker (Alpine + Tailwind) ---------- */
+.dashy-date-picker { position: relative; width: 100%; }
+
+.dashy-date-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    width: 18rem;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    box-shadow: 0 18px 50px -16px rgba(var(--ink-rgb), 0.22);
+}
+
+.dashy-date-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.dashy-date-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+}
+.dashy-date-nav:hover { background: rgba(var(--ink-rgb), 0.06); color: var(--ink); }
+.dashy-date-nav:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.dashy-date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+}
+
+.dashy-date-weekday {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding: 4px 0;
+}
+
+.dashy-date-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    width: 100%;
+    border-radius: 8px;
+    background: transparent;
+    border: 0;
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.dashy-date-cell:not(:disabled):hover {
+    background: rgba(var(--ink-rgb), 0.06);
+}
+.dashy-date-cell[data-active='true'] {
+    outline: 1px solid var(--blue);
+    outline-offset: -1px;
+}
+.dashy-date-cell--today {
+    border: 1px solid var(--blue);
+    color: var(--ink);
+}
+.dashy-date-cell--selected,
+.dashy-date-cell--selected:hover {
+    background: var(--blue);
+    color: var(--color-brand-cocoa);
+    font-weight: 600;
+}
+.dashy-date-cell--disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+}
+
+.dashy-date-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-mid);
+}
+.dashy-date-footer-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color .12s ease, background .12s ease;
+}
+.dashy-date-footer-btn:hover { color: var(--blue); background: rgba(var(--brand-danube-rgb), 0.1); }
+
+/* Date-picker time row (only rendered when withTime is on). */
+.dashy-date-time-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-mid);
+}
+.dashy-date-time-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+    margin-right: auto;
+}
+.dashy-date-time-input {
+    width: 3rem;
+    height: 30px;
+    text-align: center;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.dashy-date-time-input::-webkit-outer-spin-button,
+.dashy-date-time-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dashy-date-time-input:focus { outline: none; border-color: var(--blue); }
+.dashy-date-time-sep { color: var(--ink-muted); font-weight: 600; }
+
+
+/* ---------- Radio group (segmented pill) ---------- */
+.dashy-radio-group--segmented {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+.dashy-radio--segmented {
+    position: relative;
+    cursor: pointer;
+}
+.dashy-radio--segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.dashy-radio--segmented .dashy-radio-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    transition: background .15s ease, color .15s ease;
+}
+.dashy-radio--segmented input:checked + .dashy-radio-pill {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.dashy-radio--segmented input:focus-visible + .dashy-radio-pill {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.dashy-radio-group--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.dashy-radio--stacked {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+.dashy-radio--stacked input {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    position: relative;
+    flex: none;
+}
+.dashy-radio--stacked input:checked {
+    border-color: var(--blue);
+}
+.dashy-radio--stacked input:checked::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: var(--blue);
+    border-radius: 999px;
+}
+
+
+/* ---------- Card wrapper (semantic re-use of .dashy-card) ---------- */
+.dashy-card--sm { padding: 18px; border-radius: 14px; }
+.dashy-card--md { padding: 22px; border-radius: 16px; }
+.dashy-card--lg { padding: 30px; border-radius: 20px; }
+
+
+/* ============================================================
+   FullCalendar v6 — theme mapped to brand palette.
+   Variable names per https://fullcalendar.io/docs/css-customization
+   ============================================================ */
+:root {
+    --fc-page-bg-color: var(--bg);
+    --fc-neutral-bg-color: var(--surface-2);
+    --fc-neutral-text-color: var(--ink-muted);
+    --fc-border-color: var(--border);
+    --fc-button-text-color: var(--ink);
+    --fc-button-bg-color: transparent;
+    --fc-button-border-color: var(--border);
+    --fc-button-hover-bg-color: var(--surface-2);
+    --fc-button-hover-border-color: var(--border-mid);
+    --fc-button-active-bg-color: var(--surface-2);
+    --fc-button-active-border-color: var(--border-strong);
+    --fc-event-bg-color: var(--color-brand-danube);
+    --fc-event-border-color: var(--color-brand-danube);
+    --fc-event-text-color: var(--ink);
+    --fc-event-selected-overlay-color: rgba(89, 146, 198, 0.18);
+    --fc-today-bg-color: color-mix(in srgb, rgba(var(--ink-rgb), 1) 4%, transparent);
+    --fc-now-indicator-color: var(--state-error);
+    --fc-highlight-color: color-mix(in srgb, var(--color-brand-danube) 18%, transparent);
+}
+
+.fc {
+    color: var(--ink);
+    font-family: inherit;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-daygrid-day-number {
+    color: var(--ink-muted);
+    text-decoration: none;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid td,
+.fc .fc-scrollgrid th {
+    border-color: var(--border);
+}
+
+/* Rounded soft event blocks with readable pastel fills + dark ink text. */
+.fc .fc-event {
+    border-radius: 7px;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(var(--ink-rgb), 0.04);
+}
+.fc .fc-event .fc-event-title,
+.fc .fc-event .fc-event-title-container {
+    font-weight: 500;
+}
+.fc-timegrid-event .fc-event-main,
+.fc-daygrid-event .fc-event-main {
+    padding: 4px 8px;
+}
+
+/* One class per EventColor enum value. Higher mix % so the colour reads
+   clearly against the cream page background. Force dark ink text on every
+   inner FC element (FC pipes the title through .fc-event-main / inherit,
+   which would otherwise pick up --fc-event-text-color from defaults). */
+.fc-event-danube,
+.fc-event-torea,
+.fc-event-shilo,
+.fc-event-success,
+.fc-event-warning,
+.fc-event-error,
+.fc-event-danube  .fc-event-main, .fc-event-danube  .fc-event-title, .fc-event-danube  .fc-event-time,
+.fc-event-torea   .fc-event-main, .fc-event-torea   .fc-event-title, .fc-event-torea   .fc-event-time,
+.fc-event-shilo   .fc-event-main, .fc-event-shilo   .fc-event-title, .fc-event-shilo   .fc-event-time,
+.fc-event-success .fc-event-main, .fc-event-success .fc-event-title, .fc-event-success .fc-event-time,
+.fc-event-warning .fc-event-main, .fc-event-warning .fc-event-title, .fc-event-warning .fc-event-time,
+.fc-event-error   .fc-event-main, .fc-event-error   .fc-event-title, .fc-event-error   .fc-event-time {
+    color: var(--ink);
+}
+.fc-event-danube  { background: color-mix(in srgb, var(--color-brand-danube) 42%, white); }
+.fc-event-torea   { background: color-mix(in srgb, var(--color-brand-torea)  38%, white); }
+.fc-event-shilo   { background: color-mix(in srgb, var(--color-brand-shilo)  55%, white); }
+.fc-event-success { background: color-mix(in srgb, var(--state-success)      48%, white); }
+.fc-event-warning { background: color-mix(in srgb, var(--state-warning)      55%, white); }
+.fc-event-error   { background: color-mix(in srgb, var(--state-error)        45%, white); }
+
+/* Tasks — solid surface-2 background with strong dashed border + bold dark
+   text. Higher-specificity selectors win over both `.fc .fc-event` and the
+   FC default `.fc-h-event` background. */
+.fc .fc-event-task,
+.fc-event-task.fc-h-event {
+    background-color: var(--surface-2);
+    border: 1.5px dashed var(--ink-muted);
+    box-shadow: none;
+}
+.fc .fc-event-task,
+.fc .fc-event-task .fc-event-main,
+.fc .fc-event-task .fc-event-title,
+.fc .fc-event-task .fc-event-time {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+/* Custom day header markup (rendered via dayHeaderContent). DOW + NUM
+   sit side-by-side; the today pill is drawn around the NUM only. */
+.dashy-day-header {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+.dashy-day-header__dow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+}
+.dashy-day-header__num {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+}
+.dashy-day-header.is-today .dashy-day-header__num {
+    background: var(--cocoa);
+    color: #fff;
+    border-radius: 6px;
+    padding: 3px 8px;
+    line-height: 1;
+}
+
+/* Slot labels — uppercase muted "8 AM" style. */
+.fc .fc-timegrid-slot-label-cushion {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+}
+
+/* Keep the all-day strip on the page background so events/tasks stand out. */
+.fc .fc-timegrid-axis,
+.fc .fc-daygrid-day.fc-day-other,
+.fc .fc-timegrid-all-day-cushion {
+    background-color: transparent;
+}
+
+/* Bigger resize handle (default is ~6px). Trackpad/touch friendly. */
+.fc-timegrid-event .fc-event-resizer {
+    height: 10px;
+}
+
+/* Selection mirror (drag-to-create ghost) tinted with brand blue. */
+.fc .fc-highlight {
+    background: color-mix(in srgb, var(--color-brand-danube) 22%, transparent);
+}
+
+/* Calendar right sidebar: mini-month grid. */
+.dashy-mini-cal__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+}
+.dashy-mini-cal__day {
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    border-radius: 9999px;
+    font-size: 12px;
+    color: var(--ink);
+    transition: background-color 120ms ease;
+}
+.dashy-mini-cal__day--out {
+    color: var(--ink-dim);
+}
+.dashy-mini-cal__day--today {
+    background: var(--cocoa);
+    color: #fff;
+}
+.dashy-mini-cal__day--anchor {
+    outline: 1px solid var(--ink-dim);
+}
+.dashy-mini-cal__day:hover:not(.dashy-mini-cal__day--today) {
+    background: var(--surface-2);
+}
