@@ -10,6 +10,7 @@ use App\Domains\TimeTracking\Services\LogManualTimeService;
 use App\Domains\TimeTracking\Services\StartTimerService;
 use App\Domains\TimeTracking\Services\StopTimerService;
 use App\Domains\TimeTracking\Services\UpdateTimeEntryService;
+use App\Models\User;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -64,10 +65,32 @@ class TaskTimePanel extends Component
         $task = $this->task;
 
         if ($task === null) {
-            return new Collection();
+            return new Collection;
         }
 
         return $this->listResult($task)['entries'];
+    }
+
+    /**
+     * Entries grouped by user, for the ClickUp-style expandable entries list.
+     * Each row: ['user' => User, 'total_seconds' => int, 'entries' => Collection<int, TimeEntry>].
+     *
+     * Returns a Support\Collection (not Eloquent\Collection) because
+     * groupBy()/map()/values() always return the base Support type.
+     *
+     * @return \Illuminate\Support\Collection<int, array{user: User|null, total_seconds: int, entries: Collection<int, TimeEntry>}>
+     */
+    #[Computed]
+    public function entriesByUser(): \Illuminate\Support\Collection
+    {
+        return $this->entries
+            ->groupBy('user_id')
+            ->map(fn ($group): array => [
+                'user' => $group->first()->user,
+                'total_seconds' => (int) $group->sum('duration_seconds'),
+                'entries' => $group,
+            ])
+            ->values();
     }
 
     #[Computed]
@@ -212,6 +235,7 @@ class TaskTimePanel extends Component
     {
         unset(
             $this->entries,
+            $this->entriesByUser,
             $this->totalSeconds,
             $this->runningEntry,
             $this->isRunningForCurrentUser,

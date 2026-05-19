@@ -31,7 +31,7 @@
             href="{{ $everythingHref }}"
             wire:navigate
             class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition"
-            @aria-current(($activeTeamId === null) ? 'page' : false)
+            @if ($activeTeamId === null) aria-current="page" @endif
             style="
                 background-color: {{ $activeTeamId === null ? 'var(--surface)' : 'transparent' }};
                 color: {{ $activeTeamId === null ? 'var(--ink)' : 'var(--ink-muted)' }};
@@ -61,7 +61,7 @@
                 wire:navigate
                 wire:key="team-chip-{{ $team->id }}"
                 class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition"
-                @aria-current($isActive ? 'page' : false)
+                @if ($isActive) aria-current="page" @endif
                 style="
                     background-color: {{ $isActive ? 'var(--surface)' : 'transparent' }};
                     color: {{ $isActive ? 'var(--ink)' : 'var(--ink-muted)' }};

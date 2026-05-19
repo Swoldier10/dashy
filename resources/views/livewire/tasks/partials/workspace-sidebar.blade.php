@@ -39,7 +39,7 @@
                 <a
                     href="{{ route('tasks', ['team' => $activeTeam->id]) }}"
                     wire:navigate
-                    @aria-current($isEverythingActive ? 'page' : false)
+                    @if ($isEverythingActive) aria-current="page" @endif
                     class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
                     style="
                         background-color: {{ $isEverythingActive ? 'var(--surface)' : 'transparent' }};
@@ -68,7 +68,7 @@
                             href="{{ route('tasks.show', $project) }}"
                             wire:navigate
                             wire:key="ws-project-{{ $project->id }}"
-                            @aria-current($isActive ? 'page' : false)
+                            @if ($isActive) aria-current="page" @endif
                             class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
                             style="
                                 background-color: {{ $isActive ? 'var(--surface)' : 'transparent' }};
@@ -112,7 +112,7 @@
                 <a
                     href="{{ route('tasks') }}"
                     wire:navigate
-                    @aria-current($isEverythingActive ? 'page' : false)
+                    @if ($isEverythingActive) aria-current="page" @endif
                     class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
                     style="
                         background-color: {{ $isEverythingActive ? 'var(--surface)' : 'transparent' }};
@@ -154,7 +154,7 @@
                                 href="{{ route('tasks.show', $project) }}?from=everything"
                                 wire:navigate
                                 wire:key="ws-project-{{ $project->id }}"
-                                @aria-current($isActive ? 'page' : false)
+                                @if ($isActive) aria-current="page" @endif
                                 class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
                                 style="
                                     background-color: {{ $isActive ? 'var(--surface)' : 'transparent' }};

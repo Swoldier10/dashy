@@ -827,13 +827,20 @@ textarea.dashy-input {
 .dashy-drawer--md { max-width: 32rem; }
 .dashy-drawer--lg { max-width: 44rem; }
 
+/* Final keyframe uses `transform: none` (not translateX(0)) so the drawer
+   does NOT leave a residual transform after the animation completes.
+   A non-`none` transform on an ancestor promotes it to be the containing
+   block for any position:fixed descendant — that would mis-anchor every
+   popover/dropdown inside the drawer and let the drawer's `overflow-y: auto`
+   clip them. `none` interpolates from `translateX(±24px)` smoothly (identity
+   matrix), so the visual slide-in is unchanged. */
 @keyframes dashy-drawer-in-right {
     from { opacity: 0; transform: translateX(24px); }
-    to   { opacity: 1; transform: translateX(0); }
+    to   { opacity: 1; transform: none; }
 }
 @keyframes dashy-drawer-in-left {
     from { opacity: 0; transform: translateX(-24px); }
-    to   { opacity: 1; transform: translateX(0); }
+    to   { opacity: 1; transform: none; }
 }
 .dashy-drawer-card--right { animation: dashy-drawer-in-right .18s cubic-bezier(.2, .65, .25, 1) forwards; }
 .dashy-drawer-card--left  { animation: dashy-drawer-in-left  .18s cubic-bezier(.2, .65, .25, 1) forwards; }
@@ -1719,4 +1726,90 @@ body.dashy-scroll-locked { overflow: hidden; }
 }
 .dashy-mini-cal__day:hover:not(.dashy-mini-cal__day--today) {
     background: var(--surface-2);
+}
+
+/* ---------- Task detail drawer (ClickUp-style property grid) ----------
+   Scoped under `.task-detail-form` so global form styling stays untouched.
+   Targets selectors that live INSIDE dashy components — Tailwind utility
+   classes can't reach them from the outside. */
+
+/* Kill the gap-1.5 wrapper inside searchable-select / date-picker
+   (they leave room for an above-field label which we don't render here). */
+.task-detail-form .task-row-value .grid {
+    gap: 0;
+}
+
+/* Chromeless triggers inside property-grid value cells. */
+.task-detail-form .task-row-value .dashy-searchable-select-trigger,
+.task-detail-form .task-row-value .dashy-date-picker .dashy-input {
+    min-height: 0;
+    padding: 4px 8px;
+    border-color: transparent;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.task-detail-form .task-row-value .dashy-searchable-select-trigger:hover,
+.task-detail-form .task-row-value .dashy-date-picker .dashy-input:hover {
+    background: var(--surface-2);
+}
+/* Re-add the open / focus ring — the global rule at lines ~1121-1124 loses
+   to our higher-specificity chromeless reset and must be restored. */
+.task-detail-form .task-row-value .dashy-searchable-select-trigger[data-open='true'],
+.task-detail-form .task-row-value .dashy-searchable-select-trigger:focus-visible,
+.task-detail-form .task-row-value .dashy-date-picker .dashy-input:focus {
+    border-color: var(--blue);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+    outline: none;
+}
+
+/* Title input: thin border, blue focus ring. */
+.task-detail-form .task-detail-title-input:hover {
+    border-color: var(--border-strong);
+}
+.task-detail-form .task-detail-title-input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+
+/* Description textarea: thin border (matches title), tall. */
+.task-detail-form .task-description textarea.dashy-input {
+    min-height: 280px;
+    padding: 12px 14px;
+    border-color: var(--border-mid);
+    background: var(--surface);
+    border-radius: 8px;
+    font-size: 14px;
+}
+.task-detail-form .task-description textarea.dashy-input:hover {
+    border-color: var(--border-strong);
+}
+.task-detail-form .task-description textarea.dashy-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+
+/* ---------- Task time tracking popover (ClickUp-style) ----------
+   Scoped to the popover panel; doesn't leak to other inputs. */
+
+.task-time-input:hover {
+    border-color: var(--border-strong);
+}
+.task-time-input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.18);
+}
+.task-time-input::placeholder,
+.task-time-notes::placeholder {
+    color: var(--ink-dim);
+}
+/* Notes textarea height stays fixed across focused / idle states so the
+   surrounding popover layout never shifts. The textarea allows native
+   resizing via the corner grip if the user types more than fits. */
+.task-time-notes {
+    min-height: 1.5rem;
+    max-height: 6rem;
+    overflow-y: auto;
 }

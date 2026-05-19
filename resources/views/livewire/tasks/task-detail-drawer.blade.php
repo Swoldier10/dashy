@@ -49,113 +49,198 @@
                     </header>
                 @endif
 
-                {{-- Scrollable body. flex-1 + min-h-0 + overflow-y-auto so the
-                     middle section absorbs all remaining vertical space and
-                     scrolls internally, leaving the header/footer fixed. --}}
-                <div class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
+                {{-- Scrollable body styled as a property grid (ClickUp-style).
+                     - flex-1 + min-h-0 + overflow-y-auto: middle section absorbs
+                       remaining vertical space and scrolls; header/footer pin.
+                     - grid grid-cols-[160px_1fr] on ≥sm: label column / value column.
+                       Title, description, and attachments span both columns.
+                     - The <livewire:task-time-panel> mount stays OUTSIDE @if($task)
+                       (Livewire 4 morph workaround — see TaskTimePanel::mount).
+                       That panel renders its own label/value pair as direct grid
+                       children via display:contents on its <section>. --}}
+                <div
+                    class="task-detail-form grid min-h-0 flex-1 grid-cols-1 content-start gap-x-4 gap-y-1 overflow-y-auto px-6 py-6 sm:grid-cols-[160px_minmax(0,1fr)]"
+                >
                     @if ($task)
-                        {{-- Title --}}
-                        <x-dashy.input
-                            wire:model.blur="detailName"
-                            wire:change="saveTaskDetail"
-                            :label="__('Name')"
-                            :placeholder="__('What needs to be done?')"
-                            maxlength="200"
-                            data-test="task-detail-name"
-                        />
+                        {{-- Title: spans both columns, chromeless big heading --}}
+                        <div class="mb-2 sm:col-span-2">
+                            <input
+                                type="text"
+                                wire:model.blur="detailName"
+                                wire:change="saveTaskDetail"
+                                maxlength="200"
+                                placeholder="{{ __('What needs to be done?') }}"
+                                data-test="task-detail-name"
+                                class="task-detail-title-input w-full rounded-md border bg-transparent px-3 py-2 font-display text-2xl font-semibold leading-tight outline-none focus:outline-none"
+                                style="color: var(--ink); border-color: var(--border-mid);"
+                            />
+                        </div>
 
-                        {{-- Status / Priority / Start / Due --}}
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {{-- Status row --}}
+                        <div class="task-row-label flex items-center gap-2 py-1.5 text-[13px]" style="color: var(--ink-muted);">
+                            <x-dashy.icon name="check-badge" class="size-3.5" />
+                            <span>{{ __('Status') }}</span>
+                        </div>
+                        <div class="task-row-value flex min-w-0 items-center py-0.5">
                             <x-dashy.searchable-select
                                 wire:model.live="detailStatusId"
-                                :label="__('Status')"
                                 :options="$statusOptions"
                                 :placeholder="__('Select a status')"
                                 :searchPlaceholder="__('Search statuses…')"
                                 :emptyMessage="__('No statuses match your search.')"
                                 data-test="task-detail-status"
                             />
+                        </div>
 
-                            <x-dashy.searchable-select
-                                wire:model.live="detailPriority"
-                                :label="__('Priority')"
-                                :options="$priorityOptions"
-                                :placeholder="__('Select a priority')"
-                                :searchPlaceholder="__('Search priorities…')"
-                                :emptyMessage="__('No priorities match your search.')"
-                                data-test="task-detail-priority"
-                            />
+                        {{-- Assignees row: selected strip + Alpine dropdown picker --}}
+                        <div class="task-row-label flex items-center gap-2 py-1.5 text-[13px]" style="color: var(--ink-muted);">
+                            <x-dashy.icon name="user" class="size-3.5" />
+                            <span>{{ __('Assignees') }}</span>
+                        </div>
+                        <div
+                            class="task-row-value flex min-w-0 flex-wrap items-center gap-1.5 py-0.5"
+                            x-data="{ open: false }"
+                            @click.outside="open = false"
+                            @keydown.escape.window="open = false"
+                        >
+                            @foreach ($task->assignees as $assignee)
+                                <span
+                                    class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px]"
+                                    style="background-color: var(--surface-2); color: var(--ink);"
+                                >
+                                    <x-dashy.avatar
+                                        :name="$assignee->name"
+                                        :initials="$assignee->initials()"
+                                        :src="$assignee->avatar"
+                                        size="xs"
+                                    />
+                                    <span class="truncate">{{ $assignee->name }}</span>
+                                </span>
+                            @endforeach
+                            @if ($this->teamMembers->isNotEmpty())
+                                <div class="relative">
+                                    <button
+                                        type="button"
+                                        @click="open = ! open"
+                                        class="inline-flex size-6 items-center justify-center rounded-full transition hover:bg-[var(--surface-2)]"
+                                        style="color: var(--ink-muted);"
+                                        aria-label="{{ __('Edit assignees') }}"
+                                    >
+                                        <x-dashy.icon name="plus" class="size-3.5" />
+                                    </button>
+                                    <div
+                                        x-show="open"
+                                        x-cloak
+                                        x-transition.opacity.duration.120ms
+                                        class="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border p-1 shadow-lg"
+                                        style="background: var(--surface); border-color: var(--border);"
+                                    >
+                                        @foreach ($this->teamMembers as $member)
+                                            @php $isSelected = $task->assignees->contains('id', $member->id); @endphp
+                                            <button
+                                                type="button"
+                                                wire:click="toggleAssignee({{ $member->id }})"
+                                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-[var(--surface-2)]"
+                                                style="color: var(--ink);"
+                                                data-test="task-detail-assignee-{{ $member->id }}"
+                                            >
+                                                <x-dashy.avatar
+                                                    :name="$member->name"
+                                                    :initials="$member->initials()"
+                                                    :src="$member->avatar"
+                                                    size="xs"
+                                                />
+                                                <span class="flex-1 truncate">{{ $member->name }}</span>
+                                                @if ($isSelected)
+                                                    <x-dashy.icon name="check" class="size-3.5 shrink-0" style="color: var(--blue);" />
+                                                @endif
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
 
+                        {{-- Dates row: start → due, inline --}}
+                        <div class="task-row-label flex items-center gap-2 py-1.5 text-[13px]" style="color: var(--ink-muted);">
+                            <x-dashy.icon name="calendar-days" class="size-3.5" />
+                            <span>{{ __('Dates') }}</span>
+                        </div>
+                        <div class="task-row-value flex min-w-0 flex-wrap items-center gap-1.5 py-0.5">
                             <x-dashy.date-picker
                                 name="detailStartDate"
-                                :label="__('Start date')"
-                                :placeholder="__('Start date')"
+                                :placeholder="__('Start')"
                                 on-change="saveTaskDetail"
                                 with-time
                                 test-id="task-detail-start-date"
                             />
-
+                            <span style="color: var(--ink-dim);">→</span>
                             <x-dashy.date-picker
                                 name="detailEndDate"
-                                :label="__('Due date')"
-                                :placeholder="__('Due date')"
+                                :placeholder="__('Due')"
                                 on-change="saveTaskDetail"
                                 with-time
                                 test-id="task-detail-end-date"
                             />
                         </div>
 
-                        {{-- Assignees --}}
-                        <div>
-                            <x-dashy.label>{{ __('Assignees') }}</x-dashy.label>
-                            @if ($this->teamMembers->isEmpty())
-                                <p class="text-sm" style="color: var(--ink-dim);">{{ __('No team members.') }}</p>
-                            @else
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach ($this->teamMembers as $member)
-                                        @php $isSelected = $task->assignees->contains('id', $member->id); @endphp
-                                        <button
-                                            type="button"
-                                            wire:click="toggleAssignee({{ $member->id }})"
-                                            class="flex items-center gap-2 rounded-full border px-2 py-1 text-sm transition"
-                                            style="
-                                                border-color: {{ $isSelected ? 'var(--blue)' : 'var(--border-strong)' }};
-                                                background-color: {{ $isSelected ? 'color-mix(in srgb, var(--blue) 15%, transparent)' : 'transparent' }};
-                                                color: var(--ink);
-                                            "
-                                            data-test="task-detail-assignee-{{ $member->id }}"
-                                        >
-                                            <x-dashy.avatar
-                                                :name="$member->name"
-                                                :initials="$member->initials()"
-                                                :src="$member->avatar"
-                                                size="xs"
-                                            />
-                                            <span class="truncate">{{ $member->name }}</span>
-                                            @if ($isSelected)
-                                                <x-dashy.icon name="check" class="size-3.5 shrink-0" style="color: var(--blue);" />
-                                            @endif
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
+                        {{-- Priority row --}}
+                        <div class="task-row-label flex items-center gap-2 py-1.5 text-[13px]" style="color: var(--ink-muted);">
+                            <x-dashy.icon name="flag" class="size-3.5" />
+                            <span>{{ __('Priority') }}</span>
                         </div>
+                        <div class="task-row-value flex min-w-0 items-center py-0.5">
+                            <x-dashy.searchable-select
+                                wire:model.live="detailPriority"
+                                :options="$priorityOptions"
+                                :placeholder="__('Select a priority')"
+                                :searchPlaceholder="__('Search priorities…')"
+                                :emptyMessage="__('No priorities match your search.')"
+                                data-test="task-detail-priority"
+                            />
+                        </div>
+                    @elseif ($taskId !== null)
+                        <p class="sm:col-span-2" style="color: var(--ink-muted);">
+                            {{ __('This task is no longer available.') }}
+                        </p>
+                    @endif
 
-                        {{-- Description --}}
-                        <x-dashy.textarea
-                            wire:model.blur="detailDescription"
-                            wire:change="saveTaskDetail"
-                            :label="__('Description')"
-                            rows="6"
-                            maxlength="5000"
-                            data-test="task-detail-description"
-                        />
+                    {{-- Track time row: mount stays outside @if($task) (morph workaround).
+                         The panel's <section> uses display:contents so its emitted
+                         label/value pair lines up with the property grid above. --}}
+                    <livewire:time-tracking.task-time-panel
+                        :taskId="$timePanelTaskId"
+                        :key="'time-panel-'.$timePanelTaskId"
+                    />
+
+                    @if ($task)
+                        {{-- Beschreibung section --}}
+                        <div class="task-description mt-4 sm:col-span-2">
+                            <p
+                                class="mb-2 text-[11px] font-semibold uppercase tracking-wider"
+                                style="color: var(--ink-dim);"
+                            >
+                                {{ __('Beschreibung') }}
+                            </p>
+                            <x-dashy.textarea
+                                wire:model.blur="detailDescription"
+                                wire:change="saveTaskDetail"
+                                rows="14"
+                                maxlength="5000"
+                                data-test="task-detail-description"
+                            />
+                        </div>
 
                         {{-- Attachments --}}
                         @if (! empty($task->attachments))
-                            <div>
-                                <x-dashy.label>{{ __('Attachments') }}</x-dashy.label>
-                                <div class="mt-1.5 flex flex-wrap gap-2" data-test="task-detail-attachments">
+                            <div class="sm:col-span-2">
+                                <p
+                                    class="mb-2 text-[11px] font-semibold uppercase tracking-wider"
+                                    style="color: var(--ink-dim);"
+                                >
+                                    {{ __('Attachments') }}
+                                </p>
+                                <div class="flex flex-wrap gap-2" data-test="task-detail-attachments">
                                     @foreach ($task->attachments as $att)
                                         @if (($att['type'] ?? null) === 'image' && ! empty($att['url']))
                                             <a
@@ -177,22 +262,7 @@
                                 </div>
                             </div>
                         @endif
-                    @elseif ($taskId !== null)
-                        <p style="color: var(--ink-muted);">
-                            {{ __('This task is no longer available.') }}
-                        </p>
                     @endif
-
-                    {{-- Time tracking lives OUTSIDE the @if($task) block and is
-                         the LAST child of the body so it always renders in the
-                         DOM (taskId=0 sidestep — see TaskTimePanel::mount).
-                         Livewire 4's morph engine corrupts BLOCK comment
-                         tracking when a <livewire:…> child sits inside an
-                         @if/@else, so it must stay outside the conditional. --}}
-                    <livewire:time-tracking.task-time-panel
-                        :taskId="$timePanelTaskId"
-                        :key="'time-panel-'.$timePanelTaskId"
-                    />
                 </div>
 
                 {{-- Footer pinned to bottom: created-by meta + destructive action. --}}
