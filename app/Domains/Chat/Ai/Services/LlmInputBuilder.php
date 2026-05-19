@@ -136,6 +136,19 @@ final class LlmInputBuilder
 
         $name = (string) ($toolCall['name'] ?? '');
         $arguments = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+
+        // Snapshot fields that the tools populate from chat state at validate-time
+        // (image_attachments / logo_attachment carry file paths + URLs). They are
+        // not parameters the model is allowed to set — they're not in the tool
+        // schemas — but because we register tools without `strict: true`, nothing
+        // stops the model from copying them out of a previous function_call JSON
+        // it sees in its own history (and then the validate() preservation branch
+        // would treat the echoed payload as a real snapshot). Hide them from the
+        // model so it can't echo what it cannot see.
+        foreach (['image_attachments', 'logo_attachment'] as $internalKey) {
+            unset($arguments[$internalKey]);
+        }
+
         $argumentsJson = json_encode($arguments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (! is_string($argumentsJson)) {
             $argumentsJson = '{}';

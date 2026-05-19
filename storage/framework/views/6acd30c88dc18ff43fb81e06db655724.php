@@ -217,6 +217,16 @@
                     <?php echo e(\App\Domains\TimeTracking\Support\DurationParser::format($this->totalMonthSeconds)); ?>
 
                 </span>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->totalMonthMoney !== null): ?>
+                    <span
+                        class="font-display text-base sm:text-lg"
+                        style="color: var(--ink-muted);"
+                        data-test="project-dashboard-total-money"
+                    >
+                        <?php echo e($this->totalMonthMoney); ?>
+
+                    </span>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
          <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -265,8 +275,8 @@
 <?php endif; ?>
                 <div wire:ignore class="relative h-64 w-full">
                     <canvas
-                        x-data="dashyHoursChart(<?php echo \Illuminate\Support\Js::from($this->chartLabels)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($this->chartData)->toHtml() ?>)"
-                        @chart-data-updated.window="update($event.detail.labels, $event.detail.values)"
+                        x-data="dashyHoursChart(<?php echo \Illuminate\Support\Js::from($this->chartLabels)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($this->chartData)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($this->chartCounts)->toHtml() ?>, <?php echo \Illuminate\Support\Js::from($this->billingRate)->toHtml() ?>)"
+                        @chart-data-updated.window="update($event.detail.labels, $event.detail.values, $event.detail.counts)"
                         data-test="project-dashboard-chart"
                     ></canvas>
                 </div>

@@ -77,6 +77,58 @@ document.addEventListener('alpine:init', () => {
             this.items = [];
         },
     });
+
+    /* -------------------------------------------------------------------
+       <x-dashy.popover> component. Anchors a position:fixed panel to a
+       trigger element via getBoundingClientRect, so the panel escapes any
+       overflow:hidden / overflow:auto ancestors (status-group's rounded
+       container, scrollable panes, etc.).
+       ------------------------------------------------------------------- */
+    window.Alpine.data('dashyPopover', (align = 'end', position = 'bottom') => ({
+        open: false,
+        _align: align,
+        _position: position,
+
+        toggle() {
+            this.open = ! this.open;
+            if (this.open) this.$nextTick(() => this.reposition());
+        },
+
+        close() {
+            this.open = false;
+        },
+
+        reposition() {
+            const wrapper = this.$refs.trigger;
+            const panel = this.$refs.panel;
+            if (! wrapper || ! panel) return;
+            // The trigger wrapper uses display:contents and has no own box;
+            // measure the actual rendered child (typically the <button>).
+            const triggerEl = wrapper.firstElementChild || wrapper;
+            const r = triggerEl.getBoundingClientRect();
+            const offset = 6;
+
+            if (this._position === 'bottom') {
+                panel.style.top = (r.bottom + offset) + 'px';
+                panel.style.bottom = '';
+            } else {
+                panel.style.bottom = (window.innerHeight - r.top + offset) + 'px';
+                panel.style.top = '';
+            }
+
+            if (this._align === 'start') {
+                panel.style.left = r.left + 'px';
+                panel.style.right = '';
+            } else if (this._align === 'center') {
+                const w = panel.offsetWidth;
+                panel.style.left = (r.left + r.width / 2 - w / 2) + 'px';
+                panel.style.right = '';
+            } else {
+                panel.style.right = (window.innerWidth - r.right) + 'px';
+                panel.style.left = '';
+            }
+        },
+    }));
 });
 
 /* -----------------------------------------------------------------------

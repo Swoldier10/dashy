@@ -71,22 +71,7 @@ use Livewire\Component;
                 ],
                 'project' => null,
                 'title' => $this->activeTeam ? $this->activeTeam->name : __('All tasks'),
-                'subtitle' => $this->activeTeam
-                    ? __('Every task in :team', ['team' => $this->activeTeam->name])
-                    : __('Every task across teams and projects'),
                 'showArchived' => $this->showArchived,
-            ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-
-            <?php echo $__env->make('livewire.tasks.partials.status-summary-bar', [
-                'buckets' => collect($this->statusBuckets)->map(fn ($b) => [
-                    'key' => $b['key'],
-                    'label' => $b['label'],
-                    'count' => $b['count'],
-                    'colorVar' => $b['colorVar'],
-                    'anchor' => $b['anchor'],
-                ])->all(),
-                'openCount' => $this->openCount,
-                'doneCount' => $this->doneCount,
             ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
             <div class="flex flex-col gap-3">

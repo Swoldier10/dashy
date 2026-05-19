@@ -82,4 +82,101 @@ class ProjectShowTabsTest extends TestCase
 
         $this->assertSame('tasks', $component->get('activeTab'));
     }
+
+    public function test_tab_buttons_emit_wire_click_to_sync_with_livewire(): void
+    {
+        // Regression: <x-dashy.tabs> previously left wire-model in $attributes
+        // instead of declaring it as a prop, so <x-dashy.tab> read $wireModel
+        // as null via @aware and never emitted wire:click. Clicks then updated
+        // Alpine local state but not Livewire, so the pill highlight changed
+        // while the content stayed on the previous tab.
+        [$user, $project] = $this->bootScenario();
+
+        $html = Livewire::actingAs($user)
+            ->test('pages::tasks.show', ['project' => $project->id])
+            ->html();
+
+        $this->assertStringContainsString(
+            'wire:click="$set(\'activeTab\', \'tasks\')"',
+            $html,
+            'Tasks tab button must emit wire:click that updates the Livewire activeTab.',
+        );
+        $this->assertStringContainsString(
+            'wire:click="$set(\'activeTab\', \'dashboard\')"',
+            $html,
+            'Dashboard tab button must emit wire:click that updates the Livewire activeTab.',
+        );
+    }
+
+    public function test_tab_buttons_bind_aria_selected_to_wire_state(): void
+    {
+        // Regression: the previous implementation bound :aria-selected to an
+        // Alpine-local `value` variable mirrored from $defaultValue at init.
+        // After wire:navigate the Alpine value persisted from the old page and
+        // the pill ended up "a step behind" the server's $activeTab. The new
+        // binding reads $wire['activeTab'] directly so any change to the
+        // Livewire property — click, navigate, programmatic — updates the
+        // pill on the next reactive tick.
+        [$user, $project] = $this->bootScenario();
+
+        $html = Livewire::actingAs($user)
+            ->test('pages::tasks.show', ['project' => $project->id])
+            ->html();
+
+        $this->assertStringContainsString(
+            ":aria-selected=\"\$wire['activeTab'] === 'tasks'\"",
+            $html,
+            'Tasks tab must reactively bind aria-selected to $wire.activeTab.',
+        );
+        $this->assertStringContainsString(
+            ":aria-selected=\"\$wire['activeTab'] === 'dashboard'\"",
+            $html,
+            'Dashboard tab must reactively bind aria-selected to $wire.activeTab.',
+        );
+    }
+
+    public function test_default_tab_ssr_marks_tasks_selected(): void
+    {
+        [$user, $project] = $this->bootScenario();
+
+        $html = Livewire::actingAs($user)
+            ->test('pages::tasks.show', ['project' => $project->id])
+            ->html();
+
+        // With $activeTab='tasks' the SSR pill must be on Tasks, not Dashboard.
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*aria-selected="true"[^>]*>\s*(?:<[^>]*>\s*)*<span>Tasks<\/span>/',
+            $html,
+            'Tasks pill must be aria-selected="true" in the SSR HTML.',
+        );
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*aria-selected="false"[^>]*>\s*(?:<[^>]*>\s*)*<span>Dashboard<\/span>/',
+            $html,
+            'Dashboard pill must be aria-selected="false" in the SSR HTML.',
+        );
+    }
+
+    public function test_set_active_tab_flips_ssr_pill(): void
+    {
+        // Catches the "step behind" symptom at the HTML layer: after the
+        // server's activeTab flips, the next render must SSR the Dashboard
+        // pill as selected.
+        [$user, $project] = $this->bootScenario();
+
+        $html = Livewire::actingAs($user)
+            ->test('pages::tasks.show', ['project' => $project->id])
+            ->set('activeTab', 'dashboard')
+            ->html();
+
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*aria-selected="true"[^>]*>\s*(?:<[^>]*>\s*)*<span>Dashboard<\/span>/',
+            $html,
+            'After setting activeTab=dashboard, Dashboard pill must be SSR-selected.',
+        );
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*aria-selected="false"[^>]*>\s*(?:<[^>]*>\s*)*<span>Tasks<\/span>/',
+            $html,
+            'After setting activeTab=dashboard, Tasks pill must NOT be SSR-selected.',
+        );
+    }
 }

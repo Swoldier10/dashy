@@ -3,12 +3,14 @@
 namespace App\Domains\Chat\Services;
 
 use App\Domains\Chat\Actions\CreateMessageAction;
+use App\Domains\Chat\Actions\ListMessagesForChatAction;
 use App\Domains\Chat\Ai\Services\LlmInputBuilder;
 use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
 use App\Domains\Codex\DTOs\ChatStreamEvent;
+use App\Domains\Codex\Models\CodexConnection;
 use App\Domains\Codex\Services\CodexClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +48,7 @@ TXT;
         private CodexClient $codex,
         private CreateMessageAction $createMessage,
         private LlmInputBuilder $inputBuilder,
+        private ListMessagesForChatAction $listMessages,
     ) {}
 
     /**
@@ -58,7 +61,7 @@ TXT;
         int $triggerThreshold = self::DEFAULT_TRIGGER_THRESHOLD,
         int $keepTail = self::DEFAULT_KEEP_TAIL,
     ): ?Message {
-        $all = $chat->messages()->get();
+        $all = $this->listMessages->execute($chat);
         if ($all->count() < $triggerThreshold) {
             return null;
         }
@@ -105,7 +108,7 @@ TXT;
     /**
      * @param  array<int, array<string, mixed>>  $inputItems
      */
-    private function summarise(\App\Domains\Codex\Models\CodexConnection $connection, array $inputItems): string
+    private function summarise(CodexConnection $connection, array $inputItems): string
     {
         $assembled = '';
         foreach ($this->codex->streamChat($connection, $inputItems, self::SUMMARY_PROMPT) as $event) {

@@ -407,7 +407,6 @@ new #[Title('Tasks')] class extends Component
                 ],
                 'project' => $this->project,
                 'title' => $this->project->name,
-                'subtitle' => $this->project->description ?: __('Tasks in :name', ['name' => $this->project->name]),
                 'showArchived' => $this->showArchived,
             ])
 

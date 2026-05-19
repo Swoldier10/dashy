@@ -7,6 +7,7 @@ $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
     'icon' => null,             // heroicon name, leading
     'iconTrailing' => null,     // heroicon name, trailing
     'iconVariant' => 'outline', // outline | solid | mini | micro
+    'iconOnly' => false,        // square button, no label slot rendered
     'href' => null,
     'type' => 'button',
     'loading' => false,
@@ -33,6 +34,7 @@ foreach (array_filter(([
     'icon' => null,             // heroicon name, leading
     'iconTrailing' => null,     // heroicon name, trailing
     'iconVariant' => 'outline', // outline | solid | mini | micro
+    'iconOnly' => false,        // square button, no label slot rendered
     'href' => null,
     'type' => 'button',
     'loading' => false,
@@ -55,6 +57,7 @@ unset($__defined_vars, $__key, $__value); ?>
         'dashy-btn',
         'dashy-btn--' . $variant,
         'dashy-btn--' . $size,
+        $iconOnly ? 'dashy-btn--icon-only' : '',
         $block ? 'dashy-btn--block' : '',
     ];
 
@@ -120,7 +123,9 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
 <?php endif; ?>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-        <span><?php echo e($slot); ?></span>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (! ($iconOnly)): ?>
+            <span><?php echo e($slot); ?></span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($iconTrailing): ?>
             <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
@@ -200,7 +205,9 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
 <?php endif; ?>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-        <span><?php echo e($slot); ?></span>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (! ($iconOnly)): ?>
+            <span><?php echo e($slot); ?></span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($iconTrailing): ?>
             <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>

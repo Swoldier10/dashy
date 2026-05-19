@@ -118,6 +118,47 @@ class ProjectDashboardPanelTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_renders_money_under_total_when_team_has_hourly_rate(): void
+    {
+        Carbon::setTestNow('2026-05-15 12:00:00');
+
+        [$user, $project, $task] = $this->bootScenario();
+        $project->team->update(['hourly_rate' => '100.00', 'currency' => 'CHF']);
+
+        TimeEntry::factory()->forTask($task)->forUser($user)->create([
+            'started_at' => Carbon::parse('2026-05-10 09:00:00'),
+            'ended_at' => Carbon::parse('2026-05-10 10:30:00'),
+            'duration_seconds' => 90 * 60,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectDashboardPanel::class, ['projectId' => $project->id])
+            ->assertSee('1h 30m')
+            ->assertSee('150.00 CHF')
+            ->assertSeeHtml('data-test="project-dashboard-total-money"');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_hides_money_when_team_has_no_hourly_rate(): void
+    {
+        Carbon::setTestNow('2026-05-15 12:00:00');
+
+        [$user, $project, $task] = $this->bootScenario();
+
+        TimeEntry::factory()->forTask($task)->forUser($user)->create([
+            'started_at' => Carbon::parse('2026-05-10 09:00:00'),
+            'ended_at' => Carbon::parse('2026-05-10 10:00:00'),
+            'duration_seconds' => 3600,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ProjectDashboardPanel::class, ['projectId' => $project->id])
+            ->assertDontSeeHtml('data-test="project-dashboard-total-money"');
+
+        Carbon::setTestNow();
+    }
+
     public function test_time_entries_updated_event_triggers_refresh(): void
     {
         Carbon::setTestNow('2026-05-15 12:00:00');

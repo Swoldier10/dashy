@@ -69,6 +69,15 @@
                 >
                     {{ \App\Domains\TimeTracking\Support\DurationParser::format($this->totalMonthSeconds) }}
                 </span>
+                @if ($this->totalMonthMoney !== null)
+                    <span
+                        class="font-display text-base sm:text-lg"
+                        style="color: var(--ink-muted);"
+                        data-test="project-dashboard-total-money"
+                    >
+                        {{ $this->totalMonthMoney }}
+                    </span>
+                @endif
             </div>
         </x-dashy.card>
 
@@ -77,8 +86,8 @@
                 <x-dashy.label>{{ __('Daily hours') }}</x-dashy.label>
                 <div wire:ignore class="relative h-64 w-full">
                     <canvas
-                        x-data="dashyHoursChart(@js($this->chartLabels), @js($this->chartData))"
-                        @chart-data-updated.window="update($event.detail.labels, $event.detail.values)"
+                        x-data="dashyHoursChart(@js($this->chartLabels), @js($this->chartData), @js($this->chartCounts), @js($this->billingRate))"
+                        @chart-data-updated.window="update($event.detail.labels, $event.detail.values, $event.detail.counts)"
                         data-test="project-dashboard-chart"
                     ></canvas>
                 </div>

@@ -12,19 +12,26 @@
      Owns open state + click-outside + escape. --}}
 
 <div
-    x-data="{
-        open: false,
-        toggle() { this.open = ! this.open; },
-        close() { this.open = false; },
-    }"
+    x-data="dashyPopover('{{ $align }}', '{{ $position }}')"
     @keydown.escape.window="open && close()"
+    @scroll.window.passive="open && reposition()"
+    @resize.window.passive="open && reposition()"
     {{ $attributes->class(['relative inline-block']) }}
 >
-    <div @click="toggle()" class="contents">
+    <div x-ref="trigger" @click="toggle()" class="contents">
         {{ $trigger ?? '' }}
     </div>
 
+    {{-- wire:ignore.self preserves the panel's JS-set inline style (top/right/etc.
+         from reposition()) across Livewire morphs. Without it, the server HTML
+         has no style attribute, so morph strips the inline coords and the
+         position:fixed panel falls back to its DOM-static spot — off-screen
+         when the popover stays open after a server action (e.g. logManual
+         saving a time entry in the time-tracking popover). Children still
+         morph normally so list contents refresh. --}}
     <div
+        x-ref="panel"
+        wire:ignore.self
         x-show="open"
         x-cloak
         x-transition.opacity.duration.120ms

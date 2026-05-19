@@ -1,14 +1,27 @@
 @props([
     'text',
-    'position' => 'top', // top | bottom | left | right
+    'position' => 'top',  // top | bottom | left | right
+    'align' => 'center',  // start | center | end (only used for top/bottom)
 ])
 
 @php
+    $vertical = in_array($position, ['top', 'bottom'], true);
+    $horizontalAnchor = match ($align) {
+        'start' => 'left-0',
+        'end' => 'right-0',
+        default => 'left-1/2 -translate-x-1/2',
+    };
+    $verticalAnchor = match ($align) {
+        'start' => 'top-0',
+        'end' => 'bottom-0',
+        default => 'top-1/2 -translate-y-1/2',
+    };
+
     $posClass = match ($position) {
-        'bottom' => 'top-full left-1/2 -translate-x-1/2 mt-1',
-        'left' => 'right-full top-1/2 -translate-y-1/2 mr-1',
-        'right' => 'left-full top-1/2 -translate-y-1/2 ml-1',
-        default => 'bottom-full left-1/2 -translate-x-1/2 mb-1',
+        'bottom' => 'top-full mt-1 ' . $horizontalAnchor,
+        'left' => 'right-full mr-1 ' . $verticalAnchor,
+        'right' => 'left-full ml-1 ' . $verticalAnchor,
+        default => 'bottom-full mb-1 ' . $horizontalAnchor,
     };
 @endphp
 

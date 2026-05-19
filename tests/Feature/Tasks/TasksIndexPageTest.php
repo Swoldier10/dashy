@@ -33,8 +33,6 @@ class TasksIndexPageTest extends TestCase
         $response->assertSee('data-test="workspace-sidebar-everything"', escape: false);
         $response->assertSee('data-test="workspace-sidebar-project-'.$project->id.'"', escape: false);
         $response->assertSee('data-test="page-heading"', escape: false);
-        $response->assertSee('data-test="status-summary"', escape: false);
-        $response->assertSee('data-test="status-summary-totals"', escape: false);
     }
 
     public function test_renders_task_rows_with_project_pill_and_no_status_pill(): void
@@ -184,15 +182,15 @@ class TasksIndexPageTest extends TestCase
         $this->assertSame($statusFrom->id, $task->refresh()->project_status_id);
     }
 
-    public function test_new_task_button_renders_with_cocoa_variant(): void
+    public function test_new_task_button_renders_in_heading_toolbar(): void
     {
         [$user] = $this->seedScenario();
 
         $this->actingAs($user)
             ->get(route('tasks'))
             ->assertOk()
-            ->assertSee('data-test="tasks-header-add"', escape: false)
-            ->assertSee('dashy-btn--cocoa', escape: false);
+            ->assertSee('data-test="page-heading-toolbar"', escape: false)
+            ->assertSee('data-test="tasks-header-add"', escape: false);
     }
 
     /** @return array{0: User, 1: Team, 2: Project, 3: ProjectStatus} */

@@ -186,14 +186,14 @@
                                 <div class="flex-1">
                                     <?php if (isset($component)) { $__componentOriginal9040acb37c44d40c6c7317a01c1eea55 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal9040acb37c44d40c6c7317a01c1eea55 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.input','data' => ['wire:model.live.debounce.250ms' => 'manualDuration','@keydown.enter.prevent' => '$wire.logManual()','placeholder' => __('Enter time (ex: 3h 20m) or start timer'),'maxlength' => '32','showError' => false,'dataTest' => 'task-time-manual-input']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.input','data' => ['wire:model' => 'manualDuration','@keydown.enter.prevent' => '$wire.logManual()','placeholder' => __('Enter time (ex: 3h 20m) or start timer'),'maxlength' => '32','showError' => false,'dataTest' => 'task-time-manual-input']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashy.input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model.live.debounce.250ms' => 'manualDuration','@keydown.enter.prevent' => '$wire.logManual()','placeholder' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('Enter time (ex: 3h 20m) or start timer')),'maxlength' => '32','showError' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false),'data-test' => 'task-time-manual-input']); ?>
+<?php $component->withAttributes(['wire:model' => 'manualDuration','@keydown.enter.prevent' => '$wire.logManual()','placeholder' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('Enter time (ex: 3h 20m) or start timer')),'maxlength' => '32','showError' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false),'data-test' => 'task-time-manual-input']); ?>
 <?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
 
 <?php echo $__env->renderComponent(); ?>

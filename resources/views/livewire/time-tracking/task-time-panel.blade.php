@@ -100,7 +100,7 @@
                             <div class="flex items-stretch gap-2">
                                 <div class="flex-1">
                                     <x-dashy.input
-                                        wire:model.live.debounce.250ms="manualDuration"
+                                        wire:model="manualDuration"
                                         @keydown.enter.prevent="$wire.logManual()"
                                         :placeholder="__('Enter time (ex: 3h 20m) or start timer')"
                                         maxlength="32"

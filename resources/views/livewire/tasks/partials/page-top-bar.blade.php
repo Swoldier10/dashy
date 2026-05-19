@@ -23,22 +23,6 @@
         <span class="text-[11px] font-semibold uppercase tracking-wider"
               style="color: var(--ink-dim);">{{ __('Tasks') }}</span>
         <span class="font-display text-base sm:text-lg" style="color: var(--ink);">{{ __('Workspace') }}</span>
-
-        <button
-            type="button"
-            x-on:click="document.querySelector('[data-test=sidebar-search]')?.focus()"
-            class="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition"
-            style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink-muted);"
-            onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--surface-2)';"
-            onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='var(--surface)';"
-            data-test="tasks-top-search"
-        >
-            <x-dashy.icon name="magnifying-glass" class="size-3.5" />
-            <span class="hidden sm:inline">{{ __('Search') }}</span>
-            <kbd class="hidden rounded px-1 text-[10px] font-medium sm:inline-block"
-                 style="background-color: var(--surface-2); color: var(--ink-dim);"
-                 aria-hidden="true">⌘K</kbd>
-        </button>
     </div>
 
     {{-- Team chip strip --}}

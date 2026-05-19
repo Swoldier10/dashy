@@ -10,6 +10,7 @@ use App\Domains\Projects\Models\ProjectStatus;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +39,7 @@ class AppSidebarTest extends TestCase
         $response->assertSeeHtml("\$store.modals.open('settings')");
     }
 
-    public function test_mobile_shell_renders_topbar_search_and_user_menu_trigger(): void
+    public function test_mobile_shell_renders_topbar_and_user_menu_trigger(): void
     {
         $this->actingAs(User::factory()->create());
 
@@ -46,7 +47,6 @@ class AppSidebarTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-test="mobile-topbar"', escape: false);
-        $response->assertSee('data-test="mobile-search"', escape: false);
         $response->assertSee('data-test="mobile-user-menu"', escape: false);
         // Primary nav lives in the floating bottom bar; the desktop sidebar nav
         // is also present in the rendered HTML.
@@ -230,7 +230,7 @@ class AppSidebarTest extends TestCase
         $response->assertDontSeeText('Should Stay Hidden');
     }
 
-    public function test_redesigned_sidebar_renders_search_today_and_user_card(): void
+    public function test_redesigned_sidebar_renders_today_and_user_card(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -238,11 +238,8 @@ class AppSidebarTest extends TestCase
         $response = $this->get(route('chat'));
 
         $response->assertOk();
-        $response->assertSee('data-test="sidebar-search"', escape: false);
         $response->assertSee('data-test="sidebar-today"', escape: false);
         $response->assertSee('data-test="sidebar-user-menu"', escape: false);
-        $response->assertSee('Search or jump to', escape: false);
-        $response->assertSee('⌘K', escape: false);
         $response->assertSeeText('View all');
     }
 
@@ -260,7 +257,7 @@ class AppSidebarTest extends TestCase
 
     public function test_today_date_label_uses_current_day(): void
     {
-        \Carbon\Carbon::setTestNow('2026-05-16 10:00:00');
+        Carbon::setTestNow('2026-05-16 10:00:00');
 
         $this->actingAs(User::factory()->create());
 

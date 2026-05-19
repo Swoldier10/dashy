@@ -2,7 +2,10 @@
 
 namespace App\Domains\Chat\Services;
 
+use App\Domains\Chat\Actions\CountChatMessagesAction;
 use App\Domains\Chat\Actions\CreateMessageAction;
+use App\Domains\Chat\Actions\HasRecentChatSummaryAction;
+use App\Domains\Chat\Actions\ListMessagesForChatAction;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Ai\Services\AiSystemPromptBuilder;
 use App\Domains\Chat\Ai\Services\AiToolRegistry;
@@ -11,7 +14,6 @@ use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Jobs\CompactHistoryJob;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Models\Message;
-use App\Domains\Chat\Services\CompactHistoryService;
 use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
 use App\Domains\Codex\DTOs\ChatStreamEvent;
 use App\Domains\Codex\Exceptions\CodexNotConnectedException;
@@ -33,6 +35,9 @@ final class SendMessageService
         private AiSystemPromptBuilder $promptBuilder,
         private AiToolRegistry $toolRegistry,
         private LlmInputBuilder $inputBuilder,
+        private CountChatMessagesAction $countMessages,
+        private HasRecentChatSummaryAction $hasRecentSummary,
+        private ListMessagesForChatAction $listMessages,
     ) {}
 
     /**
@@ -78,16 +83,15 @@ final class SendMessageService
      */
     private function maybeDispatchCompaction(Chat $chat): void
     {
-        $totalMessages = $chat->messages()->count();
+        $totalMessages = $this->countMessages->execute($chat);
         if ($totalMessages < CompactHistoryService::DEFAULT_TRIGGER_THRESHOLD) {
             return;
         }
 
-        $hasRecentSummary = $chat->messages()
-            ->latest('id')
-            ->limit(CompactHistoryService::DEFAULT_KEEP_TAIL + 2)
-            ->where('is_summary', true)
-            ->exists();
+        $hasRecentSummary = $this->hasRecentSummary->execute(
+            $chat,
+            CompactHistoryService::DEFAULT_KEEP_TAIL + 2,
+        );
         if ($hasRecentSummary) {
             return;
         }
@@ -100,8 +104,8 @@ final class SendMessageService
      * handles text deltas (UI streaming) and tool-call events.
      *
      * @param  array{type: string, id?: int, name?: string}|null  $screen
-     *         viewport hint forwarded to the system-prompt builder so the
-     *         model can resolve "this task" / "here" without ambiguity.
+     *                                                                     viewport hint forwarded to the system-prompt builder so the
+     *                                                                     model can resolve "this task" / "here" without ambiguity.
      * @return Generator<int, ChatStreamEvent>
      */
     public function streamAssistant(Chat $chat, User $user, ?array $screen = null): Generator
@@ -112,7 +116,7 @@ final class SendMessageService
         }
 
         $inputItems = $this->inputBuilder->build(
-            $chat->messages()->get(['id', 'role', 'content', 'attachments', 'tool_call', 'is_summary'])
+            $this->listMessages->execute($chat, ['id', 'role', 'content', 'attachments', 'tool_call', 'is_summary'])
         );
 
         $instructions = $this->promptBuilder->build($user, $screen);

@@ -62,7 +62,6 @@ use Livewire\Component;
                 ],
                 'project' => $this->project,
                 'title' => $this->project->name,
-                'subtitle' => $this->project->description ?: __('Tasks in :name', ['name' => $this->project->name]),
                 'showArchived' => $this->showArchived,
             ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 

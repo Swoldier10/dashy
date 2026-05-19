@@ -1,6 +1,6 @@
 <?php foreach (([
-    'name' => null,
     'wireModel' => null,
+    'defaultValue' => null,
 ]) as $__key => $__value) {
     $__consumeVariable = is_string($__key) ? $__key : $__value;
     $$__consumeVariable = is_string($__key) ? $__env->getConsumableComponentData($__key, $__value) : $__env->getConsumableComponentData($__value);
@@ -46,15 +46,22 @@ unset($__defined_vars, $__key, $__value); ?>
 
 <?php
     $tag = $href ? 'a' : 'button';
+    // SSR initial state — picks up the current Livewire property value via the
+    // parent's defaultValue so the right pill is highlighted before Alpine
+    // boots and so non-JS feature tests stay assertable.
+    $isInitiallySelected = $defaultValue !== null && (string) $defaultValue === (string) $value;
 ?>
 
 <<?php echo e($tag); ?>
 
     role="tab"
     <?php if($href): ?> href="<?php echo e($href); ?>" <?php else: ?> type="button" <?php endif; ?>
-    <?php if($wireModel): ?> wire:click="$set('<?php echo e($wireModel); ?>', '<?php echo e($value); ?>')" <?php endif; ?>
-    <?php if(! $href): ?> :aria-selected="value === <?php echo \Illuminate\Support\Js::from($value)->toHtml() ?>" @click="value = <?php echo \Illuminate\Support\Js::from($value)->toHtml() ?>" <?php endif; ?>
-    <?php if($href): ?> aria-selected="false" <?php endif; ?>
+    aria-selected="<?php echo e($isInitiallySelected ? 'true' : 'false'); ?>"
+    <?php if($wireModel && ! $href): ?>
+        
+        :aria-selected="$wire['<?php echo e($wireModel); ?>'] === <?php echo \Illuminate\Support\Js::from($value)->toHtml() ?>"
+        wire:click="$set('<?php echo e($wireModel); ?>', '<?php echo e($value); ?>')"
+    <?php endif; ?>
     <?php echo e($attributes->class(['dashy-tab'])); ?>
 
 >

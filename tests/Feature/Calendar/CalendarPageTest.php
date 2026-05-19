@@ -341,17 +341,4 @@ class CalendarPageTest extends TestCase
         // First row's first cell is outside the anchor month (April).
         $this->assertFalse($weeks[0][0]['inMonth']);
     }
-
-    public function test_sidebar_renders_with_mini_calendar(): void
-    {
-        $user = User::factory()->create();
-
-        Livewire::actingAs($user)
-            ->withQueryParams(['view' => 'week', 'date' => '2026-05-16'])
-            ->test(Calendar::class)
-            ->assertSeeHtml('data-test="calendar-sidebar"')
-            ->assertSeeHtml('data-test="calendar-mini"')
-            ->assertDontSeeHtml('data-test="calendar-noticed"')
-            ->assertDontSeeHtml('data-test="calendar-legend"');
-    }
 }

@@ -4,6 +4,7 @@ namespace App\Domains\Chat\Services;
 
 use App\Domains\Chat\Actions\DeleteChatAction;
 use App\Domains\Chat\Actions\FindChatForUserAction;
+use App\Domains\Chat\Actions\ListChatAttachmentPathsAction;
 use App\Domains\Chat\Models\Chat;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -13,33 +14,32 @@ use Illuminate\Support\Facades\Storage;
 final class DeleteChatService
 {
     public function __construct(
-        private FindChatForUserAction $find,
-        private DeleteChatAction $delete,
+        private FindChatForUserAction $findAction,
+        private DeleteChatAction $deleteAction,
+        private ListChatAttachmentPathsAction $listAttachmentPaths,
     ) {}
 
     public function execute(User $user, int $chatId): void
     {
-        $chat = $this->find->execute($user, $chatId);
+        $chat = $this->findAction->execute($user, $chatId);
         if ($chat === null) {
             throw new ModelNotFoundException;
         }
 
+        $this->delete($chat);
+    }
+
+    public function delete(Chat $chat): void
+    {
         DB::transaction(function () use ($chat) {
             $this->cleanUpAttachmentFiles($chat);
-            $this->delete->execute($chat);
+            $this->deleteAction->execute($chat);
         });
     }
 
     private function cleanUpAttachmentFiles(Chat $chat): void
     {
-        $paths = $chat->messages()
-            ->whereNotNull('attachments')
-            ->pluck('attachments')
-            ->flatten(1)
-            ->pluck('path')
-            ->filter()
-            ->values()
-            ->all();
+        $paths = $this->listAttachmentPaths->execute($chat);
 
         if ($paths !== []) {
             Storage::disk('public')->delete($paths);

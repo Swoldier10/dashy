@@ -81,9 +81,9 @@ class BottomTabBarTest extends TestCase
 
     public function test_bar_is_absent_for_guests(): void
     {
-        $response = $this->get(route('home'));
+        $response = $this->followingRedirects()->get(route('home'));
 
-        // Welcome page isn't wrapped in the app shell, so the bar should not appear.
+        // Home redirects guests to /login, which isn't wrapped in the app shell.
         $response->assertDontSee('data-test="bottom-tab-bar"', escape: false);
     }
 }

@@ -38,8 +38,35 @@ function loadChart() {
 const chartByCanvas = new WeakMap();
 const pendingByCanvas = new WeakMap();
 
+/**
+ * Format an `hours` float (e.g. 1.5) as a compact "1h 30m" string. Used in
+ * the chart tooltip and kept colocated with the chart wrapper so other
+ * places can adopt the same formatting without re-implementing it.
+ */
+function formatHoursAsHm(hours) {
+    const safe = Number(hours) || 0;
+    if (safe <= 0) return '0m';
+    const whole = Math.floor(safe);
+    const minutes = Math.round((safe - whole) * 60);
+    if (whole > 0 && minutes > 0) return `${whole}h ${minutes}m`;
+    if (whole > 0) return `${whole}h`;
+    return `${minutes}m`;
+}
+
+/**
+ * Format a money amount with apostrophe thousands separator and two decimals,
+ * matching the PHP-side number_format($amount, 2, '.', "'") used elsewhere on
+ * the dashboard so the tooltip and the totals card render identically.
+ */
+function formatMoney(amount) {
+    const safe = Number(amount) || 0;
+    const parts = safe.toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+    return parts.join('.');
+}
+
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('dashyHoursChart', (labels = [], values = []) => ({
+    window.Alpine.data('dashyHoursChart', (labels = [], values = [], counts = [], billingRate = null) => ({
         canvasEl: null,
 
         init() {
@@ -50,17 +77,22 @@ document.addEventListener('alpine:init', () => {
             pendingByCanvas.set(canvas, {
                 labels: [...labels],
                 values: [...values],
+                counts: [...counts],
             });
 
             const blue = cssVar('--blue', '#5992c6');
+            const blueHover = cssVar('--blue-deep', '#0a2a92');
             const muted = cssVar('--ink-muted', '#a89c89');
             const grid = cssVar('--border', 'rgba(255,255,255,0.06)');
+            const surface = cssVar('--surface', '#ffffff');
+            const ink = cssVar('--ink', '#1a1a1a');
+            const inkDim = cssVar('--ink-dim', '#9a9a9a');
 
             loadChart().then((Chart) => {
                 if (! canvas.isConnected) return;
                 if (chartByCanvas.has(canvas)) return;
 
-                const initial = pendingByCanvas.get(canvas) ?? { labels: [], values: [] };
+                const initial = pendingByCanvas.get(canvas) ?? { labels: [], values: [], counts: [] };
 
                 const chart = new Chart(canvas, {
                     type: 'bar',
@@ -69,7 +101,11 @@ document.addEventListener('alpine:init', () => {
                         datasets: [
                             {
                                 data: initial.values,
+                                // Entry counts ride along on the dataset so the tooltip
+                                // callback can read them via ctx.dataset.entries[ctx.dataIndex].
+                                entries: initial.counts,
                                 backgroundColor: blue,
+                                hoverBackgroundColor: blueHover,
                                 borderRadius: 6,
                                 borderSkipped: false,
                                 maxBarThickness: 28,
@@ -80,6 +116,7 @@ document.addEventListener('alpine:init', () => {
                         responsive: true,
                         maintainAspectRatio: false,
                         animation: { duration: 250 },
+                        interaction: { mode: 'index', intersect: false },
                         scales: {
                             y: {
                                 beginAtZero: true,
@@ -98,15 +135,44 @@ document.addEventListener('alpine:init', () => {
                         plugins: {
                             legend: { display: false },
                             tooltip: {
+                                enabled: true,
+                                backgroundColor: surface,
+                                titleColor: ink,
+                                bodyColor: ink,
+                                borderColor: grid,
+                                borderWidth: 1,
+                                padding: { top: 10, right: 12, bottom: 10, left: 12 },
+                                cornerRadius: 10,
+                                displayColors: false,
+                                titleFont: { size: 12, weight: '600' },
+                                bodyFont: { size: 12.5, weight: '500' },
+                                bodySpacing: 4,
+                                caretSize: 5,
+                                titleMarginBottom: 6,
                                 callbacks: {
+                                    title: (items) => {
+                                        const item = items[0];
+                                        if (! item) return '';
+                                        // Chart x labels are bare day numbers (e.g. "18").
+                                        return `Day ${item.label}`;
+                                    },
                                     label: (ctx) => {
                                         const hours = Number(ctx.parsed.y) || 0;
-                                        if (hours <= 0) return '0m';
-                                        const whole = Math.floor(hours);
-                                        const minutes = Math.round((hours - whole) * 60);
-                                        if (whole > 0 && minutes > 0) return `${whole}h ${minutes}m`;
-                                        if (whole > 0) return `${whole}h`;
-                                        return `${minutes}m`;
+                                        const entries = Number(ctx.dataset.entries?.[ctx.dataIndex]) || 0;
+                                        const entryLabel = entries === 1 ? '1 entry' : `${entries} entries`;
+                                        const lines = [
+                                            `Total · ${formatHoursAsHm(hours)}`,
+                                            entryLabel,
+                                        ];
+                                        if (billingRate && billingRate.rate) {
+                                            const money = hours * Number(billingRate.rate);
+                                            lines.push(`${formatMoney(money)} ${billingRate.currency}`);
+                                        }
+                                        return lines;
+                                    },
+                                    labelTextColor: (ctx) => {
+                                        // Make the second line (entry count) feel like a sub-label.
+                                        return ctx.dataIndex === 0 ? ink : inkDim;
                                     },
                                 },
                             },
@@ -121,21 +187,23 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        update(nextLabels, nextValues) {
+        update(nextLabels, nextValues, nextCounts) {
             const canvas = this.canvasEl;
             if (! canvas) return;
 
             const labels = [...(nextLabels ?? [])];
             const values = [...(nextValues ?? [])];
+            const counts = [...(nextCounts ?? [])];
 
             const chart = chartByCanvas.get(canvas);
             if (! chart) {
-                pendingByCanvas.set(canvas, { labels, values });
+                pendingByCanvas.set(canvas, { labels, values, counts });
                 return;
             }
 
             chart.data.labels = labels;
             chart.data.datasets[0].data = values;
+            chart.data.datasets[0].entries = counts;
             chart.update();
         },
 

@@ -76,6 +76,20 @@ class ProjectDashboardPanel extends Component
         );
     }
 
+    /**
+     * @return array<string, int>
+     */
+    #[Computed]
+    public function dailyEntryCounts(): array
+    {
+        return app(ProjectTimeStatsService::class)->dailyEntryCountsForMonth(
+            Auth::user(),
+            $this->projectId,
+            CarbonImmutable::parse($this->monthAnchor),
+            $this->resolvedUserId(),
+        );
+    }
+
     #[Computed]
     public function totalAllTimeSeconds(): int
     {
@@ -90,6 +104,31 @@ class ProjectDashboardPanel extends Component
     public function totalMonthSeconds(): int
     {
         return (int) array_sum($this->dailyHours);
+    }
+
+    /**
+     * @return array{rate: float, currency: string}|null
+     */
+    #[Computed]
+    public function billingRate(): ?array
+    {
+        return app(ProjectTimeStatsService::class)->billingRateForProject(
+            Auth::user(),
+            $this->projectId,
+        );
+    }
+
+    #[Computed]
+    public function totalMonthMoney(): ?string
+    {
+        $rate = $this->billingRate;
+        if ($rate === null) {
+            return null;
+        }
+
+        $amount = ($this->totalMonthSeconds / 3600) * $rate['rate'];
+
+        return number_format($amount, 2, '.', "'").' '.$rate['currency'];
     }
 
     /**
@@ -114,6 +153,17 @@ class ProjectDashboardPanel extends Component
             fn (int $seconds) => round($seconds / 3600, 2),
             array_values($this->dailyHours),
         );
+    }
+
+    /**
+     * Entry counts per day, parallel-indexed with $chartLabels and $chartData.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function chartCounts(): array
+    {
+        return array_values($this->dailyEntryCounts);
     }
 
     #[Computed]
@@ -164,10 +214,13 @@ class ProjectDashboardPanel extends Component
     {
         unset(
             $this->dailyHours,
+            $this->dailyEntryCounts,
             $this->totalAllTimeSeconds,
             $this->totalMonthSeconds,
+            $this->totalMonthMoney,
             $this->chartLabels,
             $this->chartData,
+            $this->chartCounts,
             $this->monthLabel,
             $this->isCurrentMonth,
         );
@@ -176,6 +229,7 @@ class ProjectDashboardPanel extends Component
             'chart-data-updated',
             labels: $this->chartLabels,
             values: $this->chartData,
+            counts: $this->chartCounts,
         );
     }
 }

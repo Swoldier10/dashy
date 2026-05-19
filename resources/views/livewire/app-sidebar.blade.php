@@ -9,7 +9,12 @@
     $user = auth()->user();
 @endphp
 
-<div class="lg:w-[280px] lg:shrink-0">
+<div
+    x-data="{ collapsed: localStorage.getItem('dashy-sidebar-collapsed') === '1' }"
+    x-init="$watch('collapsed', v => localStorage.setItem('dashy-sidebar-collapsed', v ? '1' : '0'))"
+    :class="collapsed ? 'lg:w-16' : 'lg:w-[280px]'"
+    class="lg:shrink-0 lg:transition-[width] lg:duration-200"
+>
     {{-- ────────────────────────────────────────────────────────────────
          Mobile / tablet shell (visible below lg)
          Compact header: logo + search + user avatar; collapsible panel
@@ -32,18 +37,7 @@
                 <span class="hidden sm:inline font-display text-base" style="color: var(--ink);">Dashy</span>
             </a>
 
-            <label class="relative flex-1">
-                <span class="sr-only">{{ __('Search') }}</span>
-                <x-dashy.icon name="magnifying-glass" class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2" style="color: var(--ink-muted);" />
-                <input
-                    type="search"
-                    placeholder="{{ __('Search or jump to…') }}"
-                    class="block w-full rounded-lg border py-2 pl-8 pr-3 text-sm transition focus:outline-none focus:ring-2"
-                    style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink);"
-                    aria-label="{{ __('Search or jump to') }}"
-                    data-test="mobile-search"
-                />
-            </label>
+            <div class="flex-1"></div>
 
             <button
                 type="button"
@@ -142,47 +136,67 @@
          Desktop sidebar (visible at lg+) — matches the mockup
          ──────────────────────────────────────────────────────────────── --}}
     <aside
-        class="hidden h-screen w-full shrink-0 flex-col gap-4 border-r p-4 lg:sticky lg:top-0 lg:flex"
+        class="hidden h-screen w-full shrink-0 flex-col gap-4 overflow-hidden border-r lg:sticky lg:top-0 lg:flex"
+        :class="collapsed ? 'p-2 items-center' : 'p-4'"
         style="background-color: var(--surface-2); border-color: var(--border); color: var(--ink);"
         data-test="desktop-sidebar"
     >
-        {{-- Logo --}}
-        <a href="{{ route('chat') }}" wire:navigate class="flex items-center gap-2 px-1" aria-label="Dashy home">
-            <span
-                class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
-                style="background-color: var(--cocoa); color: #fff;"
-                aria-hidden="true"
-            >d</span>
-            <span class="font-display text-base" style="color: var(--ink);">Dashy</span>
-        </a>
+        {{-- Logo + collapse/expand toggle. Stacks vertically in the rail
+             so both stay on-screen at 64px wide. --}}
+        <div
+            class="flex w-full gap-2"
+            :class="collapsed ? 'flex-col items-center' : 'items-center justify-between px-1'"
+        >
+            <a
+                href="{{ route('chat') }}"
+                wire:navigate
+                class="flex items-center gap-2"
+                aria-label="Dashy home"
+            >
+                <span
+                    class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
+                    style="background-color: var(--cocoa); color: #fff;"
+                    aria-hidden="true"
+                >d</span>
+                <span x-show="!collapsed" class="font-display text-base" style="color: var(--ink);">Dashy</span>
+            </a>
+            <button
+                type="button"
+                x-on:click="collapsed = ! collapsed"
+                class="inline-flex size-7 shrink-0 items-center justify-center rounded-md transition"
+                style="color: var(--ink-muted);"
+                onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--bg)';"
+                onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='transparent';"
+                :aria-label="collapsed ? '{{ __('Expand sidebar') }}' : '{{ __('Collapse sidebar') }}'"
+                data-test="sidebar-toggle"
+            >
+                <x-dashy.icon
+                    name="chevron-double-left"
+                    x-show="!collapsed"
+                    class="size-4"
+                />
+                <x-dashy.icon
+                    name="chevron-double-right"
+                    x-show="collapsed"
+                    x-cloak
+                    class="size-4"
+                />
+            </button>
+        </div>
 
-        {{-- Search --}}
-        <label class="relative block">
-            <span class="sr-only">{{ __('Search') }}</span>
-            <x-dashy.icon name="magnifying-glass" class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2" style="color: var(--ink-muted);" />
-            <input
-                type="search"
-                placeholder="{{ __('Search or jump to…') }}"
-                class="block w-full rounded-lg border py-2 pl-8 pr-12 text-sm transition focus:outline-none focus:ring-2"
-                style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink);"
-                aria-label="{{ __('Search or jump to') }}"
-                data-test="sidebar-search"
-            />
-            <kbd
-                class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                style="background-color: var(--surface-2); color: var(--ink-dim);"
-                aria-hidden="true"
-            >⌘K</kbd>
-        </label>
-
-        {{-- Primary nav --}}
-        <nav class="flex flex-col gap-0.5" role="navigation" aria-label="{{ __('Primary') }}">
+        {{-- Primary nav — labels collapse to icon-only when the rail is narrow. --}}
+        <nav
+            class="flex w-full flex-col gap-0.5"
+            role="navigation"
+            aria-label="{{ __('Primary') }}"
+        >
             @foreach ($navItems as $item)
                 <a
                     href="{{ route($item['route']) }}"
                     wire:navigate
                     aria-current="{{ $item['active'] ? 'page' : 'false' }}"
-                    class="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition"
+                    class="flex items-center rounded-lg py-2.5 text-sm font-medium transition"
+                    :class="collapsed ? 'justify-center px-0' : 'gap-3 px-2'"
                     style="
                         color: {{ $item['active'] ? 'var(--ink)' : 'var(--ink-muted)' }};
                         background-color: {{ $item['active'] ? 'var(--surface)' : 'transparent' }};
@@ -194,36 +208,56 @@
                         onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
                         onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
                     @endif
+                    :title="collapsed ? '{{ $item['label'] }}' : ''"
                     data-test="sidebar-nav-{{ $item['route'] }}"
                 >
                     <span
-                        class="flex size-7 shrink-0 items-center justify-center rounded-lg"
-                        style="background-color: {{ $item['active'] ? 'var(--accent)' : 'transparent' }}; color: {{ $item['active'] ? 'var(--cocoa)' : 'currentColor' }};"
+                        class="relative flex size-8 shrink-0 items-center justify-center"
+                        style="color: currentColor;"
                     >
-                        <x-dashy.icon :name="$item['icon']" class="size-4" />
+                        <x-dashy.icon :name="$item['icon']" class="size-6" />
+                        @if (! empty($item['dot']))
+                            {{-- Dot moves onto the icon when collapsed so it
+                                 stays visible in the rail. --}}
+                            <span
+                                x-show="collapsed"
+                                x-cloak
+                                class="absolute -right-0.5 -top-0.5 size-1.5 rounded-full ring-2"
+                                style="background-color: var(--state-error); --tw-ring-color: var(--surface-2);"
+                                aria-label="{{ __('Has updates') }}"
+                            ></span>
+                        @endif
                     </span>
-                    <span class="flex-1">{{ $item['label'] }}</span>
+                    <span x-show="!collapsed" class="flex-1">{{ $item['label'] }}</span>
                     @if (! empty($item['dot']))
-                        <span class="size-1.5 rounded-full" style="background-color: var(--state-error);" aria-label="{{ __('Has updates') }}"></span>
+                        <span
+                            x-show="!collapsed"
+                            class="size-1.5 rounded-full"
+                            style="background-color: var(--state-error);"
+                            aria-label="{{ __('Has updates') }}"
+                        ></span>
                     @endif
                 </a>
             @endforeach
         </nav>
 
-        {{-- + New chat --}}
+        {{-- + New chat — collapses to a square icon button in the rail. --}}
         @if ($isChatRoute)
             <button
                 type="button"
                 wire:click="startNewChat"
-                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
+                class="flex items-center rounded-lg py-2 text-sm font-medium transition"
+                :class="collapsed ? 'size-10 self-center justify-center p-0' : 'gap-3 px-3'"
                 style="background-color: var(--cocoa); color: #fff;"
                 onmouseover="this.style.opacity='0.92'"
                 onmouseout="this.style.opacity='1'"
+                :title="collapsed ? '{{ __('New chat') }}' : ''"
                 data-test="sidebar-new-chat"
             >
                 <x-dashy.icon name="plus" class="size-4" />
-                <span class="flex-1 text-left">{{ __('New chat') }}</span>
+                <span x-show="!collapsed" class="flex-1 text-left">{{ __('New chat') }}</span>
                 <kbd
+                    x-show="!collapsed"
                     class="rounded px-1.5 py-0.5 text-[10px] font-medium"
                     style="background-color: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.72);"
                     aria-hidden="true"
@@ -232,7 +266,7 @@
         @endif
 
         {{-- Today's agenda --}}
-        <section class="flex flex-col gap-2" data-test="sidebar-today">
+        <section x-show="!collapsed" class="flex flex-col gap-2" data-test="sidebar-today">
             <div class="flex items-center justify-between px-1">
                 <p class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--ink-dim);">
                     {{ $this->todayDateLabel }}
@@ -251,9 +285,10 @@
         <div class="flex-1"></div>
 
         {{-- Recent chats — visible on every route so the user can jump back
-             into a conversation from anywhere (matches the design mockup). --}}
+             into a conversation from anywhere (matches the design mockup).
+             Hidden in the collapsed rail to keep it narrow. --}}
         @if ($this->chats->isNotEmpty())
-            <section class="flex min-h-0 flex-col gap-1" data-test="sidebar-recents">
+            <section x-show="!collapsed" class="flex min-h-0 flex-col gap-1" data-test="sidebar-recents">
                 <p class="px-1 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--ink-dim);">
                     {{ __('Recent chats') }}
                 </p>
@@ -300,22 +335,25 @@
             </section>
         @endif
 
-        {{-- User profile card — opens the global settings modal. --}}
-        <div class="mt-2 border-t pt-3" style="border-color: var(--border);">
+        {{-- User profile card — opens the global settings modal. Collapses to
+             the avatar-only avatar in the rail. --}}
+        <div class="mt-2 w-full border-t pt-3" style="border-color: var(--border);">
             <button
                 type="button"
                 x-on:click="$store.modals.open('settings')"
-                class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition"
+                class="flex items-center rounded-lg py-2 text-left transition"
+                :class="collapsed ? 'w-auto justify-center self-center px-1' : 'w-full gap-3 px-2'"
                 style="background-color: transparent;"
                 onmouseover="this.style.backgroundColor='var(--surface-2)'"
                 onmouseout="this.style.backgroundColor='transparent'"
+                :title="collapsed ? '{{ __('Settings') }}' : ''"
                 data-test="sidebar-user-menu"
             >
                 <span
                     class="flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold"
                     style="background-color: var(--cocoa); color: #fff;"
                 >{{ $user->initials() }}</span>
-                <div class="min-w-0 flex-1">
+                <div x-show="!collapsed" class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium" style="color: var(--ink);">{{ $user->name }}</p>
                     <p class="truncate text-xs" style="color: var(--ink-muted);">
                         @if ($this->isCodexConnected)
@@ -325,7 +363,7 @@
                         @endif
                     </p>
                 </div>
-                <x-dashy.icon name="cog-6-tooth" class="size-4 shrink-0" style="color: var(--ink-muted);" />
+                <x-dashy.icon x-show="!collapsed" name="cog-6-tooth" class="size-4 shrink-0" style="color: var(--ink-muted);" />
             </button>
         </div>
     </aside>

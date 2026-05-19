@@ -5,10 +5,6 @@
         <main class="min-w-0 flex-1">
             <?php echo $__env->make('livewire.calendar.partials.fullcalendar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         </main>
-
-        <aside class="hidden w-[300px] shrink-0 border-l border-[var(--border)] bg-[var(--bg)] lg:block">
-            <?php echo $__env->make('livewire.calendar.partials.sidebar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-        </aside>
     </div>
 
     <?php echo $__env->make('livewire.calendar.partials.event-drawer', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>

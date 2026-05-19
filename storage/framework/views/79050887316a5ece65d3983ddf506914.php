@@ -1,7 +1,10 @@
 <?php $attributes ??= new \Illuminate\View\ComponentAttributeBag;
 
 $__newAttributes = [];
-$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames((['defaultValue' => null]));
+$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
+    'defaultValue' => null,
+    'wireModel' => null,
+]));
 
 foreach ($attributes->all() as $__key => $__value) {
     if (in_array($__key, $__propNames)) {
@@ -16,7 +19,10 @@ $attributes = new \Illuminate\View\ComponentAttributeBag($__newAttributes);
 unset($__propNames);
 unset($__newAttributes);
 
-foreach (array_filter((['defaultValue' => null]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+foreach (array_filter(([
+    'defaultValue' => null,
+    'wireModel' => null,
+]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
 
@@ -28,8 +34,8 @@ foreach ($attributes->all() as $__key => $__value) {
 
 unset($__defined_vars, $__key, $__value); ?>
 
+
 <div
-    x-data="{ value: <?php echo \Illuminate\Support\Js::from($defaultValue ?? '')->toHtml() ?> }"
     role="tablist"
     <?php echo e($attributes->class(['dashy-tabs'])); ?>
 

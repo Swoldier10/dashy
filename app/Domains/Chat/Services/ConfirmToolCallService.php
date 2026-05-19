@@ -2,10 +2,10 @@
 
 namespace App\Domains\Chat\Services;
 
+use App\Domains\Chat\Actions\FindMessageForUserAction;
 use App\Domains\Chat\Actions\UpdateMessageToolCallAction;
 use App\Domains\Chat\Ai\Services\AiToolRegistry;
 use App\Domains\Chat\Enums\MessageRole;
-use App\Domains\Chat\Models\Message;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,6 +17,7 @@ final class ConfirmToolCallService
     public function __construct(
         private AiToolRegistry $registry,
         private UpdateMessageToolCallAction $update,
+        private FindMessageForUserAction $findMessage,
     ) {}
 
     /**
@@ -29,13 +30,11 @@ final class ConfirmToolCallService
      * @param  array<string, mixed>  $edits  partial overrides for the stored
      *                                       tool_call.arguments (top-level
      *                                       scalar / array keys only)
-     * @return array<string, mixed>          the updated tool_call payload
+     * @return array<string, mixed> the updated tool_call payload
      */
     public function execute(User $actor, int $messageId, array $edits = []): array
     {
-        $message = Message::query()
-            ->whereHas('chat', fn ($q) => $q->where('user_id', $actor->id))
-            ->find($messageId);
+        $message = $this->findMessage->execute($actor, $messageId);
 
         if ($message === null) {
             throw new ModelNotFoundException('Message not found.');

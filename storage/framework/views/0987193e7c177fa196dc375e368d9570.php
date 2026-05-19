@@ -9,7 +9,12 @@
     $user = auth()->user();
 ?>
 
-<div class="lg:w-[280px] lg:shrink-0">
+<div
+    x-data="{ collapsed: localStorage.getItem('dashy-sidebar-collapsed') === '1' }"
+    x-init="$watch('collapsed', v => localStorage.setItem('dashy-sidebar-collapsed', v ? '1' : '0'))"
+    :class="collapsed ? 'lg:w-16' : 'lg:w-[280px]'"
+    class="lg:shrink-0 lg:transition-[width] lg:duration-200"
+>
     
     <header
         x-data="{ open: false }"
@@ -27,39 +32,7 @@
                 <span class="hidden sm:inline font-display text-base" style="color: var(--ink);">Dashy</span>
             </a>
 
-            <label class="relative flex-1">
-                <span class="sr-only"><?php echo e(__('Search')); ?></span>
-                <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'magnifying-glass','class' => 'pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2','style' => 'color: var(--ink-muted);']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('dashy.icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'magnifying-glass','class' => 'pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2','style' => 'color: var(--ink-muted);']); ?>
-<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
-
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal95d44a2f66f034299285b9491205706f)): ?>
-<?php $attributes = $__attributesOriginal95d44a2f66f034299285b9491205706f; ?>
-<?php unset($__attributesOriginal95d44a2f66f034299285b9491205706f); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal95d44a2f66f034299285b9491205706f)): ?>
-<?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
-<?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
-<?php endif; ?>
-                <input
-                    type="search"
-                    placeholder="<?php echo e(__('Search or jump to…')); ?>"
-                    class="block w-full rounded-lg border py-2 pl-8 pr-3 text-sm transition focus:outline-none focus:ring-2"
-                    style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink);"
-                    aria-label="<?php echo e(__('Search or jump to')); ?>"
-                    data-test="mobile-search"
-                />
-            </label>
+            <div class="flex-1"></div>
 
             <button
                 type="button"
@@ -240,33 +213,49 @@
 
     
     <aside
-        class="hidden h-screen w-full shrink-0 flex-col gap-4 border-r p-4 lg:sticky lg:top-0 lg:flex"
+        class="hidden h-screen w-full shrink-0 flex-col gap-4 overflow-hidden border-r lg:sticky lg:top-0 lg:flex"
+        :class="collapsed ? 'p-2 items-center' : 'p-4'"
         style="background-color: var(--surface-2); border-color: var(--border); color: var(--ink);"
         data-test="desktop-sidebar"
     >
         
-        <a href="<?php echo e(route('chat')); ?>" wire:navigate class="flex items-center gap-2 px-1" aria-label="Dashy home">
-            <span
-                class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
-                style="background-color: var(--cocoa); color: #fff;"
-                aria-hidden="true"
-            >d</span>
-            <span class="font-display text-base" style="color: var(--ink);">Dashy</span>
-        </a>
-
-        
-        <label class="relative block">
-            <span class="sr-only"><?php echo e(__('Search')); ?></span>
-            <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
+        <div
+            class="flex w-full gap-2"
+            :class="collapsed ? 'flex-col items-center' : 'items-center justify-between px-1'"
+        >
+            <a
+                href="<?php echo e(route('chat')); ?>"
+                wire:navigate
+                class="flex items-center gap-2"
+                aria-label="Dashy home"
+            >
+                <span
+                    class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
+                    style="background-color: var(--cocoa); color: #fff;"
+                    aria-hidden="true"
+                >d</span>
+                <span x-show="!collapsed" class="font-display text-base" style="color: var(--ink);">Dashy</span>
+            </a>
+            <button
+                type="button"
+                x-on:click="collapsed = ! collapsed"
+                class="inline-flex size-7 shrink-0 items-center justify-center rounded-md transition"
+                style="color: var(--ink-muted);"
+                onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--bg)';"
+                onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='transparent';"
+                :aria-label="collapsed ? '<?php echo e(__('Expand sidebar')); ?>' : '<?php echo e(__('Collapse sidebar')); ?>'"
+                data-test="sidebar-toggle"
+            >
+                <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'magnifying-glass','class' => 'pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2','style' => 'color: var(--ink-muted);']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'chevron-double-left','xShow' => '!collapsed','class' => 'size-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashy.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'magnifying-glass','class' => 'pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2','style' => 'color: var(--ink-muted);']); ?>
+<?php $component->withAttributes(['name' => 'chevron-double-left','x-show' => '!collapsed','class' => 'size-4']); ?>
 <?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
 
 <?php echo $__env->renderComponent(); ?>
@@ -279,29 +268,44 @@
 <?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
 <?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
 <?php endif; ?>
-            <input
-                type="search"
-                placeholder="<?php echo e(__('Search or jump to…')); ?>"
-                class="block w-full rounded-lg border py-2 pl-8 pr-12 text-sm transition focus:outline-none focus:ring-2"
-                style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink);"
-                aria-label="<?php echo e(__('Search or jump to')); ?>"
-                data-test="sidebar-search"
-            />
-            <kbd
-                class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                style="background-color: var(--surface-2); color: var(--ink-dim);"
-                aria-hidden="true"
-            >⌘K</kbd>
-        </label>
+                <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'chevron-double-right','xShow' => 'collapsed','xCloak' => true,'class' => 'size-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('dashy.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'chevron-double-right','x-show' => 'collapsed','x-cloak' => true,'class' => 'size-4']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal95d44a2f66f034299285b9491205706f)): ?>
+<?php $attributes = $__attributesOriginal95d44a2f66f034299285b9491205706f; ?>
+<?php unset($__attributesOriginal95d44a2f66f034299285b9491205706f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal95d44a2f66f034299285b9491205706f)): ?>
+<?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
+<?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
+<?php endif; ?>
+            </button>
+        </div>
 
         
-        <nav class="flex flex-col gap-0.5" role="navigation" aria-label="<?php echo e(__('Primary')); ?>">
+        <nav
+            class="flex w-full flex-col gap-0.5"
+            role="navigation"
+            aria-label="<?php echo e(__('Primary')); ?>"
+        >
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $navItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
                 <a
                     href="<?php echo e(route($item['route'])); ?>"
                     wire:navigate
                     aria-current="<?php echo e($item['active'] ? 'page' : 'false'); ?>"
-                    class="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition"
+                    class="flex items-center rounded-lg py-2.5 text-sm font-medium transition"
+                    :class="collapsed ? 'justify-center px-0' : 'gap-3 px-2'"
                     style="
                         color: <?php echo e($item['active'] ? 'var(--ink)' : 'var(--ink-muted)'); ?>;
                         background-color: <?php echo e($item['active'] ? 'var(--surface)' : 'transparent'); ?>;
@@ -313,22 +317,23 @@
                         onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
                         onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
                     <?php endif; ?>
+                    :title="collapsed ? '<?php echo e($item['label']); ?>' : ''"
                     data-test="sidebar-nav-<?php echo e($item['route']); ?>"
                 >
                     <span
-                        class="flex size-7 shrink-0 items-center justify-center rounded-lg"
-                        style="background-color: <?php echo e($item['active'] ? 'var(--accent)' : 'transparent'); ?>; color: <?php echo e($item['active'] ? 'var(--cocoa)' : 'currentColor'); ?>;"
+                        class="relative flex size-8 shrink-0 items-center justify-center"
+                        style="color: currentColor;"
                     >
                         <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => $item['icon'],'class' => 'size-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => $item['icon'],'class' => 'size-6']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashy.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($item['icon']),'class' => 'size-4']); ?>
+<?php $component->withAttributes(['name' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($item['icon']),'class' => 'size-6']); ?>
 <?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
 
 <?php echo $__env->renderComponent(); ?>
@@ -341,10 +346,25 @@
 <?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
 <?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
 <?php endif; ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($item['dot'])): ?>
+                            
+                            <span
+                                x-show="collapsed"
+                                x-cloak
+                                class="absolute -right-0.5 -top-0.5 size-1.5 rounded-full ring-2"
+                                style="background-color: var(--state-error); --tw-ring-color: var(--surface-2);"
+                                aria-label="<?php echo e(__('Has updates')); ?>"
+                            ></span>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </span>
-                    <span class="flex-1"><?php echo e($item['label']); ?></span>
+                    <span x-show="!collapsed" class="flex-1"><?php echo e($item['label']); ?></span>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($item['dot'])): ?>
-                        <span class="size-1.5 rounded-full" style="background-color: var(--state-error);" aria-label="<?php echo e(__('Has updates')); ?>"></span>
+                        <span
+                            x-show="!collapsed"
+                            class="size-1.5 rounded-full"
+                            style="background-color: var(--state-error);"
+                            aria-label="<?php echo e(__('Has updates')); ?>"
+                        ></span>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </a>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
@@ -355,10 +375,12 @@
             <button
                 type="button"
                 wire:click="startNewChat"
-                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
+                class="flex items-center rounded-lg py-2 text-sm font-medium transition"
+                :class="collapsed ? 'size-10 self-center justify-center p-0' : 'gap-3 px-3'"
                 style="background-color: var(--cocoa); color: #fff;"
                 onmouseover="this.style.opacity='0.92'"
                 onmouseout="this.style.opacity='1'"
+                :title="collapsed ? '<?php echo e(__('New chat')); ?>' : ''"
                 data-test="sidebar-new-chat"
             >
                 <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
@@ -383,8 +405,9 @@
 <?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
 <?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
 <?php endif; ?>
-                <span class="flex-1 text-left"><?php echo e(__('New chat')); ?></span>
+                <span x-show="!collapsed" class="flex-1 text-left"><?php echo e(__('New chat')); ?></span>
                 <kbd
+                    x-show="!collapsed"
                     class="rounded px-1.5 py-0.5 text-[10px] font-medium"
                     style="background-color: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.72);"
                     aria-hidden="true"
@@ -393,7 +416,7 @@
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         
-        <section class="flex flex-col gap-2" data-test="sidebar-today">
+        <section x-show="!collapsed" class="flex flex-col gap-2" data-test="sidebar-today">
             <div class="flex items-center justify-between px-1">
                 <p class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--ink-dim);">
                     <?php echo e($this->todayDateLabel); ?>
@@ -414,7 +437,7 @@
 
         
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->chats->isNotEmpty()): ?>
-            <section class="flex min-h-0 flex-col gap-1" data-test="sidebar-recents">
+            <section x-show="!collapsed" class="flex min-h-0 flex-col gap-1" data-test="sidebar-recents">
                 <p class="px-1 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--ink-dim);">
                     <?php echo e(__('Recent chats')); ?>
 
@@ -485,21 +508,23 @@
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         
-        <div class="mt-2 border-t pt-3" style="border-color: var(--border);">
+        <div class="mt-2 w-full border-t pt-3" style="border-color: var(--border);">
             <button
                 type="button"
                 x-on:click="$store.modals.open('settings')"
-                class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition"
+                class="flex items-center rounded-lg py-2 text-left transition"
+                :class="collapsed ? 'w-auto justify-center self-center px-1' : 'w-full gap-3 px-2'"
                 style="background-color: transparent;"
                 onmouseover="this.style.backgroundColor='var(--surface-2)'"
                 onmouseout="this.style.backgroundColor='transparent'"
+                :title="collapsed ? '<?php echo e(__('Settings')); ?>' : ''"
                 data-test="sidebar-user-menu"
             >
                 <span
                     class="flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold"
                     style="background-color: var(--cocoa); color: #fff;"
                 ><?php echo e($user->initials()); ?></span>
-                <div class="min-w-0 flex-1">
+                <div x-show="!collapsed" class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium" style="color: var(--ink);"><?php echo e($user->name); ?></p>
                     <p class="truncate text-xs" style="color: var(--ink-muted);">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->isCodexConnected): ?>
@@ -513,14 +538,14 @@
                 </div>
                 <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'cog-6-tooth','class' => 'size-4 shrink-0','style' => 'color: var(--ink-muted);']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['xShow' => '!collapsed','name' => 'cog-6-tooth','class' => 'size-4 shrink-0','style' => 'color: var(--ink-muted);']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashy.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'cog-6-tooth','class' => 'size-4 shrink-0','style' => 'color: var(--ink-muted);']); ?>
+<?php $component->withAttributes(['x-show' => '!collapsed','name' => 'cog-6-tooth','class' => 'size-4 shrink-0','style' => 'color: var(--ink-muted);']); ?>
 <?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
 
 <?php echo $__env->renderComponent(); ?>

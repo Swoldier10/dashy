@@ -28,9 +28,5 @@
         @endforeach
     </div>
 
-    <div class="ml-auto whitespace-nowrap text-[11px]" style="color: var(--ink-dim);" data-test="status-summary-totals">
-        <span><span style="color: var(--ink-muted);">{{ $openCount }}</span> {{ __('open') }}</span>
-        <span class="mx-1">·</span>
-        <span><span style="color: var(--ink-muted);">{{ $doneCount }}</span> {{ __('done') }}</span>
-    </div>
+
 </div>

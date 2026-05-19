@@ -2,9 +2,9 @@
 
 namespace App\Domains\Chat\Services;
 
+use App\Domains\Chat\Actions\FindMessageForUserAction;
 use App\Domains\Chat\Actions\UpdateMessageToolCallAction;
 use App\Domains\Chat\Enums\MessageRole;
-use App\Domains\Chat\Models\Message;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -15,16 +15,15 @@ final class DiscardToolCallService
 {
     public function __construct(
         private UpdateMessageToolCallAction $update,
+        private FindMessageForUserAction $findMessage,
     ) {}
 
     /**
-     * @return array<string, mixed>  the updated tool_call payload
+     * @return array<string, mixed> the updated tool_call payload
      */
     public function execute(User $actor, int $messageId): array
     {
-        $message = Message::query()
-            ->whereHas('chat', fn ($q) => $q->where('user_id', $actor->id))
-            ->find($messageId);
+        $message = $this->findMessage->execute($actor, $messageId);
 
         if ($message === null) {
             throw new ModelNotFoundException('Message not found.');

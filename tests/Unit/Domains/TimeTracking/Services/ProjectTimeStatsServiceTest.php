@@ -99,6 +99,52 @@ class ProjectTimeStatsServiceTest extends TestCase
         app(ProjectTimeStatsService::class)->totalSecondsForProject($stranger, $project->id);
     }
 
+    public function test_daily_entry_counts_back_fill_every_day_and_count_correctly(): void
+    {
+        [$user, $project, $task] = $this->bootScenario();
+
+        TimeEntry::factory()->forTask($task)->forUser($user)->create([
+            'started_at' => CarbonImmutable::parse('2026-05-10 09:00:00'),
+            'ended_at' => CarbonImmutable::parse('2026-05-10 10:00:00'),
+            'duration_seconds' => 3600,
+        ]);
+        TimeEntry::factory()->forTask($task)->forUser($user)->create([
+            'started_at' => CarbonImmutable::parse('2026-05-10 14:00:00'),
+            'ended_at' => CarbonImmutable::parse('2026-05-10 15:30:00'),
+            'duration_seconds' => 5400,
+        ]);
+        TimeEntry::factory()->forTask($task)->forUser($user)->create([
+            'started_at' => CarbonImmutable::parse('2026-05-20 09:00:00'),
+            'ended_at' => CarbonImmutable::parse('2026-05-20 10:00:00'),
+            'duration_seconds' => 3600,
+        ]);
+
+        $result = app(ProjectTimeStatsService::class)->dailyEntryCountsForMonth(
+            $user,
+            $project->id,
+            CarbonImmutable::parse('2026-05-15'),
+        );
+
+        $this->assertCount(31, $result, 'Every day in May must be present so chart bars align with sums.');
+        $this->assertSame(2, $result['2026-05-10']);
+        $this->assertSame(1, $result['2026-05-20']);
+        $this->assertSame(0, $result['2026-05-01']);
+        $this->assertSame(0, $result['2026-05-31']);
+    }
+
+    public function test_non_member_cannot_read_daily_entry_counts(): void
+    {
+        [, $project] = $this->bootScenario();
+        $stranger = User::factory()->create();
+
+        $this->expectException(AuthorizationException::class);
+        app(ProjectTimeStatsService::class)->dailyEntryCountsForMonth(
+            $stranger,
+            $project->id,
+            CarbonImmutable::parse('2026-05-01'),
+        );
+    }
+
     public function test_total_seconds_for_project_returns_sum(): void
     {
         [$user, $project, $task] = $this->bootScenario();
@@ -107,5 +153,45 @@ class ProjectTimeStatsServiceTest extends TestCase
         TimeEntry::factory()->forTask($task)->forUser($user)->create(['duration_seconds' => 1200]);
 
         $this->assertSame(1800, app(ProjectTimeStatsService::class)->totalSecondsForProject($user, $project->id));
+    }
+
+    public function test_billing_rate_returns_rate_and_currency_when_team_has_both(): void
+    {
+        [$user, $project] = $this->bootScenario();
+        $project->team->update(['hourly_rate' => '125.50', 'currency' => 'CHF']);
+
+        $result = app(ProjectTimeStatsService::class)->billingRateForProject($user, $project->id);
+
+        $this->assertSame(125.50, $result['rate']);
+        $this->assertSame('CHF', $result['currency']);
+    }
+
+    public function test_billing_rate_returns_null_when_team_has_no_rate(): void
+    {
+        [$user, $project] = $this->bootScenario();
+
+        $this->assertNull(
+            app(ProjectTimeStatsService::class)->billingRateForProject($user, $project->id),
+        );
+    }
+
+    public function test_billing_rate_returns_null_when_only_currency_is_set(): void
+    {
+        [$user, $project] = $this->bootScenario();
+        $project->team->update(['hourly_rate' => null, 'currency' => 'EUR']);
+
+        $this->assertNull(
+            app(ProjectTimeStatsService::class)->billingRateForProject($user, $project->id),
+        );
+    }
+
+    public function test_non_member_cannot_read_billing_rate(): void
+    {
+        [, $project] = $this->bootScenario();
+        $project->team->update(['hourly_rate' => '50.00', 'currency' => 'CHF']);
+        $stranger = User::factory()->create();
+
+        $this->expectException(AuthorizationException::class);
+        app(ProjectTimeStatsService::class)->billingRateForProject($stranger, $project->id);
     }
 }

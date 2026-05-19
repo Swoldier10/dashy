@@ -23,43 +23,6 @@
         <span class="text-[11px] font-semibold uppercase tracking-wider"
               style="color: var(--ink-dim);"><?php echo e(__('Tasks')); ?></span>
         <span class="font-display text-base sm:text-lg" style="color: var(--ink);"><?php echo e(__('Workspace')); ?></span>
-
-        <button
-            type="button"
-            x-on:click="document.querySelector('[data-test=sidebar-search]')?.focus()"
-            class="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition"
-            style="background-color: var(--surface); border-color: var(--border-mid); color: var(--ink-muted);"
-            onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--surface-2)';"
-            onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='var(--surface)';"
-            data-test="tasks-top-search"
-        >
-            <?php if (isset($component)) { $__componentOriginal95d44a2f66f034299285b9491205706f = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal95d44a2f66f034299285b9491205706f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashy.icon','data' => ['name' => 'magnifying-glass','class' => 'size-3.5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('dashy.icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'magnifying-glass','class' => 'size-3.5']); ?>
-<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
-
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal95d44a2f66f034299285b9491205706f)): ?>
-<?php $attributes = $__attributesOriginal95d44a2f66f034299285b9491205706f; ?>
-<?php unset($__attributesOriginal95d44a2f66f034299285b9491205706f); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal95d44a2f66f034299285b9491205706f)): ?>
-<?php $component = $__componentOriginal95d44a2f66f034299285b9491205706f; ?>
-<?php unset($__componentOriginal95d44a2f66f034299285b9491205706f); ?>
-<?php endif; ?>
-            <span class="hidden sm:inline"><?php echo e(__('Search')); ?></span>
-            <kbd class="hidden rounded px-1 text-[10px] font-medium sm:inline-block"
-                 style="background-color: var(--surface-2); color: var(--ink-dim);"
-                 aria-hidden="true">⌘K</kbd>
-        </button>
     </div>
 
     

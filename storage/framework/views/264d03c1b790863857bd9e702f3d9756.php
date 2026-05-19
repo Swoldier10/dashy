@@ -41,21 +41,22 @@ unset($__defined_vars, $__key, $__value); ?>
 
 
 <div
-    x-data="{
-        open: false,
-        toggle() { this.open = ! this.open; },
-        close() { this.open = false; },
-    }"
+    x-data="dashyPopover('<?php echo e($align); ?>', '<?php echo e($position); ?>')"
     @keydown.escape.window="open && close()"
+    @scroll.window.passive="open && reposition()"
+    @resize.window.passive="open && reposition()"
     <?php echo e($attributes->class(['relative inline-block'])); ?>
 
 >
-    <div @click="toggle()" class="contents">
+    <div x-ref="trigger" @click="toggle()" class="contents">
         <?php echo e($trigger ?? ''); ?>
 
     </div>
 
+    
     <div
+        x-ref="panel"
+        wire:ignore.self
         x-show="open"
         x-cloak
         x-transition.opacity.duration.120ms

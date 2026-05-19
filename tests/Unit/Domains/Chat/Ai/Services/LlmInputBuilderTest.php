@@ -117,6 +117,70 @@ class LlmInputBuilderTest extends TestCase
         $this->assertSame("Heads up:\n\n[Voice note] meeting at 3", $items[0]['content'][0]['text']);
     }
 
+    public function test_function_call_arguments_hide_server_only_image_attachments_from_llm(): void
+    {
+        // Regression: the tools (CreateTaskTool, CreateProjectTool) snapshot
+        // user-message attachments into tool_call.arguments under
+        // `image_attachments` / `logo_attachment` so the confirm path and the
+        // card renderer can read them later. The LLM must NOT see those keys
+        // in its function_call history — otherwise it copies them onto the
+        // next create_task and the new task ends up "inheriting" an image from
+        // an unrelated previous message. We strip the keys when serialising
+        // tool calls for the LLM.
+        $chat = $this->newChat();
+        $this->assistantTool($chat, [
+            'tool_call_id' => 'fc_img',
+            'name' => 'create_task',
+            'arguments' => [
+                'project_id' => 1,
+                'name' => 'Logo hinzufügen',
+                'image_attachments' => [[
+                    'path' => 'leaked.png',
+                    'url' => 'http://example.test/leaked.png',
+                    'mime' => 'image/png',
+                    'name' => 'leaked.png',
+                ]],
+            ],
+            'status' => 'created',
+            'result' => ['task_id' => 7],
+        ]);
+        $this->assistantTool($chat, [
+            'tool_call_id' => 'fc_logo',
+            'name' => 'create_project',
+            'arguments' => [
+                'team_id' => 1,
+                'name' => 'Marketing',
+                'logo_attachment' => [
+                    'path' => 'logo.png',
+                    'url' => 'http://example.test/logo.png',
+                ],
+            ],
+            'status' => 'created',
+            'result' => ['project_id' => 9],
+        ]);
+
+        $items = app(LlmInputBuilder::class)->build($chat->messages()->get());
+
+        $createTaskCall = collect($items)->first(
+            fn ($item) => ($item['type'] ?? null) === 'function_call' && ($item['call_id'] ?? null) === 'fc_img',
+        );
+        $createProjectCall = collect($items)->first(
+            fn ($item) => ($item['type'] ?? null) === 'function_call' && ($item['call_id'] ?? null) === 'fc_logo',
+        );
+
+        $this->assertNotNull($createTaskCall);
+        $this->assertNotNull($createProjectCall);
+
+        $this->assertStringNotContainsString('image_attachments', $createTaskCall['arguments']);
+        $this->assertStringNotContainsString('leaked.png', $createTaskCall['arguments']);
+        $this->assertStringContainsString('"name":"Logo hinzu', $createTaskCall['arguments']);
+        $this->assertStringContainsString('"project_id":1', $createTaskCall['arguments']);
+
+        $this->assertStringNotContainsString('logo_attachment', $createProjectCall['arguments']);
+        $this->assertStringNotContainsString('logo.png', $createProjectCall['arguments']);
+        $this->assertStringContainsString('"name":"Marketing"', $createProjectCall['arguments']);
+    }
+
     public function test_pending_tool_call_emits_function_call_and_awaiting_output(): void
     {
         $chat = $this->newChat();

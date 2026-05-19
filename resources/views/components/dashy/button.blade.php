@@ -4,6 +4,7 @@
     'icon' => null,             // heroicon name, leading
     'iconTrailing' => null,     // heroicon name, trailing
     'iconVariant' => 'outline', // outline | solid | mini | micro
+    'iconOnly' => false,        // square button, no label slot rendered
     'href' => null,
     'type' => 'button',
     'loading' => false,
@@ -16,6 +17,7 @@
         'dashy-btn',
         'dashy-btn--' . $variant,
         'dashy-btn--' . $size,
+        $iconOnly ? 'dashy-btn--icon-only' : '',
         $block ? 'dashy-btn--block' : '',
     ];
 
@@ -38,7 +40,9 @@
         @elseif ($icon)
             <x-dashy.icon :name="$icon" :variant="$iconVariant" :class="$iconSize" />
         @endif
-        <span>{{ $slot }}</span>
+        @unless ($iconOnly)
+            <span>{{ $slot }}</span>
+        @endunless
         @if ($iconTrailing)
             <x-dashy.icon :name="$iconTrailing" :variant="$iconVariant" :class="$iconSize" />
         @endif
@@ -54,7 +58,9 @@
         @elseif ($icon)
             <x-dashy.icon :name="$icon" :variant="$iconVariant" :class="$iconSize" />
         @endif
-        <span>{{ $slot }}</span>
+        @unless ($iconOnly)
+            <span>{{ $slot }}</span>
+        @endunless
         @if ($iconTrailing)
             <x-dashy.icon :name="$iconTrailing" :variant="$iconVariant" :class="$iconSize" />
         @endif
