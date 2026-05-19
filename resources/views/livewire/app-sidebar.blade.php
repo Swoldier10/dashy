@@ -29,12 +29,8 @@
     >
         <div class="flex items-center gap-3 px-3 py-3">
             <a href="{{ route('chat') }}" wire:navigate class="flex shrink-0 items-center gap-2" aria-label="Dashy home">
-                <span
-                    class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
-                    style="background-color: var(--cocoa); color: #fff;"
-                    aria-hidden="true"
-                >d</span>
-                <span class="hidden sm:inline font-display text-base" style="color: var(--ink);">Dashy</span>
+                <img src="{{ asset('dashy-icon.png') }}" alt="" class="size-7 object-contain sm:hidden" />
+                <img src="{{ asset('dashy-logo.png') }}" alt="Dashy" class="hidden sm:block h-7 w-auto object-contain" />
             </a>
 
             <div class="flex-1"></div>
@@ -153,12 +149,18 @@
                 class="flex items-center gap-2"
                 aria-label="Dashy home"
             >
-                <span
-                    class="flex size-7 items-center justify-center rounded-md font-display text-sm font-semibold"
-                    style="background-color: var(--cocoa); color: #fff;"
-                    aria-hidden="true"
-                >d</span>
-                <span x-show="!collapsed" class="font-display text-base" style="color: var(--ink);">Dashy</span>
+                <img
+                    x-show="collapsed"
+                    src="{{ asset('dashy-icon.png') }}"
+                    alt="Dashy"
+                    class="size-7 object-contain"
+                />
+                <img
+                    x-show="!collapsed"
+                    src="{{ asset('dashy-logo.png') }}"
+                    alt="Dashy"
+                    class="h-7 w-auto object-contain"
+                />
             </a>
             <button
                 type="button"
