@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('chats:purge-expired')->daily();
+Schedule::command('google-calendar:sync-all')->everyFifteenMinutes();

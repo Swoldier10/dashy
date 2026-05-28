@@ -13,6 +13,7 @@ new class extends Component
     {
         return [
             'profile' => ['label' => __('Profile'), 'icon' => 'user-circle'],
+            'working-hours' => ['label' => __('Working Hours'), 'icon' => 'clock'],
             'appearance' => ['label' => __('Appearance'), 'icon' => 'sun'],
             'security' => ['label' => __('Security'), 'icon' => 'lock-closed'],
             'integrations' => ['label' => __('Integrations'), 'icon' => 'bolt'],
@@ -142,6 +143,9 @@ new class extends Component
                     @switch($section)
                         @case('profile')
                             <livewire:settings.profile-section :key="'settings-profile'" />
+                            @break
+                        @case('working-hours')
+                            <livewire:settings.working-hours-section :key="'settings-working-hours'" />
                             @break
                         @case('appearance')
                             <livewire:settings.appearance-section :key="'settings-appearance'" />

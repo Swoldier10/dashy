@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\GoogleCalendarController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
@@ -29,4 +30,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('teams/{team}', 'pages::teams.show')
         ->whereNumber('team')
         ->name('teams.show');
+
+    Route::get('/settings/google-calendar/connect', [GoogleCalendarController::class, 'redirect'])
+        ->name('google-calendar.connect');
+    Route::get('/settings/google-calendar/callback', [GoogleCalendarController::class, 'callback'])
+        ->name('google-calendar.callback');
 });

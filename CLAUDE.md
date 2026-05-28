@@ -1,6 +1,93 @@
-# Dashy Project Rules
+# CLAUDE.md
 
-These project-specific rules take precedence over the general Laravel/Boost guidance below. Read them before writing or editing any code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+Dashy is a multi-tenant team workspace (Laravel 13 + Livewire 4 + Tailwind 4) whose differentiator is an AI Chat copilot with 40+ tools wired into every domain. Users land on `/chat`; the assistant can read and mutate tasks, calendar events, projects, time entries, and memory on their behalf. The non-AI surfaces (Tasks/Kanban, Calendar, Time Tracking, Teams, Settings) exist both for direct human use and to keep the AI grounded in real data.
+
+Multi-tenancy is per-team: a user belongs to one or more teams (Owner/Member), and almost all data is scoped through the active team. See `MVP_FEATURES.md` for the current build state and what's missing for MVP.
+
+## Environment & Common Commands
+
+Dashy runs in **Laravel Sail** (Docker). Do **not** invoke artisan/tests via host PHP — host and container Blade-cache paths diverge and crash views. The container name is `dashy-laravel.test-1`.
+
+Run anything PHP-related via:
+
+```bash
+docker exec dashy-laravel.test-1 <command>
+```
+
+Common one-liners:
+
+```bash
+# Tests (compact output; use a filename/--filter to narrow)
+docker exec dashy-laravel.test-1 php artisan test --compact
+docker exec dashy-laravel.test-1 php artisan test --compact tests/Feature/Tasks/CreateTaskTest.php
+docker exec dashy-laravel.test-1 php artisan test --compact --filter=it_creates_a_task
+
+# Pint formatter — REQUIRED after any PHP edit before finalizing
+docker exec dashy-laravel.test-1 vendor/bin/pint --dirty --format agent
+
+# Artisan / DB introspection (prefer Boost MCP `database-query` / `database-schema` when available)
+docker exec dashy-laravel.test-1 php artisan route:list --except-vendor
+docker exec dashy-laravel.test-1 php artisan migrate --no-interaction
+
+# Frontend bundling (host-side is fine for Node)
+npm run dev      # Vite dev server
+npm run build    # Production assets — needed if the user reports CSS/JS changes not showing up
+```
+
+DB is **SQLite** (see `.env`: `DB_CONNECTION=sqlite`). Never run `migrate:fresh` without explicit per-turn authorization — it drops real local data.
+
+## Architecture
+
+### Domain map (`app/Domains/<Domain>/`)
+
+Every domain follows the **UI → Service → Action** rule (see rule 2 below). Below is what each owns, so you know which service to call from a coordinating context:
+
+- **Auth** — User registration, login flows around Fortify, Google OAuth bootstrap. Note: `App\Models\User` lives in `app/Models/` (Fortify expects it) but conceptually belongs here.
+- **Teams** — Workspaces, membership (Owner/Member roles), hourly rate + currency, team logo. The tenancy root.
+- **Projects** — Project container scoped to a team; owns customizable kanban columns (statuses).
+- **Tasks** — CRUD, multi-assignee, priority, start/end datetimes, position/reorder, attachments, archive, bulk ops. Renders on both the Tasks board and the Calendar.
+- **Calendar** — Events with recurrence rules, all-day/timed, colors, location.
+- **GoogleCalendar** — One-way sync from connected Google accounts into the Calendar domain.
+- **TimeTracking** — Start/stop timer, manual entries, per-project rollups, monthly Excel export.
+- **Chat** — The AI copilot. Subfolder `Chat/Ai/` is where the tool registry, contracts, and DTOs live; persistent conversation history with compaction.
+- **Codex** — User-editable long-term memory that the AI reads from / writes to.
+- **Search** — Semantic search (embeddings + observers that index domain models); used by chat tools and (eventually) Cmd-K.
+- **Preferences** — Per-user UI/AI preferences.
+
+Cross-domain orchestration goes through a **service in one of the domains**, never by reaching into another domain's actions or models directly (rule 1).
+
+### UI surfaces
+
+- Routes are minimal (`routes/web.php`): `/chat`, `/chat/{chat}`, `/calendar`, `/tasks`, `/tasks/{project}`, `/teams`, `/teams/{team}`, plus Google OAuth callbacks. Auth/settings come from the Livewire starter kit (grandfathered — see rule 2).
+- Livewire 4 components live in `app/Livewire/` with views in `resources/views/livewire/`. Page-style components are registered via `Route::livewire(...)` referencing the `pages::*` namespace; view files live under `resources/views/pages/`.
+- Shared Blade UI primitives are under `resources/views/components/dashy/`. Prefer reusing these (or Flux UI components) before writing new markup (rule 3).
+
+### Service providers
+
+Custom providers in `bootstrap/providers.php`:
+
+- `AiServiceProvider` — Wires the Chat AI tool registry, contracts, and Anthropic/OpenAI clients.
+- `SearchServiceProvider` — Hooks up embedding generation and search observers.
+- `GoogleCalendarServiceProvider` — Google API client bindings.
+- `FortifyServiceProvider` — Standard Fortify customizations.
+
+### Tests
+
+- Feature tests in `tests/Feature/<Domain>/` cover the request/response cycle.
+- Unit tests in `tests/Unit/Domains/<Domain>/{Services,Actions}/` — service tests mock actions where useful; action tests hit the database.
+- Every feature ships happy-path + failure-path + edge-case coverage across all touched layers (rule 5). Bug fixes ship with a regression test that fails *before* the fix.
+
+## Color & Styling
+
+The brand palette and surface/ink tokens are defined as CSS variables in `resources/css/app.css` and as Tailwind theme tokens (`--color-brand-*`, `--bg`, `--surface`, `--ink-*`). Components reference tokens via `var(--token)` or theme-mapped Tailwind classes — never raw hex (rule 4).
+
+## Project Rules
+
+The 10 numbered rules below are **load-bearing** and take precedence over the general Laravel/Boost guidance further down. Read them before writing or editing any code.
 
 ## 1. Domain-Driven Architecture
 

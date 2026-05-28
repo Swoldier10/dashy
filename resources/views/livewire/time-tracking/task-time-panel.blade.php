@@ -175,7 +175,7 @@
                                     @keydown.enter.prevent="$wire.logManual()"
                                     placeholder="{{ __('Enter time (ex: 3h 20m) or start timer') }}"
                                     maxlength="32"
-                                    class="task-time-input w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition focus:outline-none"
+                                    class="task-time-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-sm outline-none transition focus:outline-none"
                                     style="border-color: var(--border-mid); color: var(--ink);"
                                     data-test="task-time-manual-input"
                                 />

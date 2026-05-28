@@ -146,6 +146,12 @@
                 @endif
             </div>
 
+            @if ($formRecurrenceFreq !== 'none')
+                <p class="text-xs text-[var(--ink-muted)]" data-test="calendar-event-recurrence-google-note">
+                    {{ __('Recurring events are not synced with Google Calendar yet.') }}
+                </p>
+            @endif
+
             <footer class="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
                 @if (! $isCreate)
                     <x-dashy.button

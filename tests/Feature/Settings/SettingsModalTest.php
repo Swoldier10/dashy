@@ -27,6 +27,7 @@ class SettingsModalTest extends TestCase
     {
         return [
             'profile' => ['profile'],
+            'working-hours' => ['working-hours'],
             'appearance' => ['appearance'],
             'security' => ['security'],
             'integrations' => ['integrations'],
@@ -62,13 +63,13 @@ class SettingsModalTest extends TestCase
             ->assertSee('Log out');
     }
 
-    public function test_modal_lists_all_five_section_tabs(): void
+    public function test_modal_lists_all_six_section_tabs(): void
     {
         $this->actingAs(User::factory()->create());
 
         $component = Livewire::test('settings-modal');
 
-        foreach (['profile', 'appearance', 'security', 'integrations', 'memory'] as $key) {
+        foreach (['profile', 'working-hours', 'appearance', 'security', 'integrations', 'memory'] as $key) {
             $component->assertSeeHtml('data-test="settings-tab-'.$key.'"');
         }
     }
