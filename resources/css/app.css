@@ -1037,6 +1037,12 @@ textarea.dashy-input {
 .dashy-avatar--md { width: 36px;  height: 36px;  font-size: 13px; }
 .dashy-avatar--lg { width: 56px;  height: 56px;  font-size: 18px; }
 
+/* Square shape — for non-human entities (teams, projects). Users stay round. */
+.dashy-avatar--square,
+.dashy-avatar--square > img {
+    border-radius: 22%;
+}
+
 
 /* ---------- Tabs (segmented pill style) ---------- */
 .dashy-tabs {

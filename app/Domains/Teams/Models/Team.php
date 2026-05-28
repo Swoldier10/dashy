@@ -44,6 +44,11 @@ class Team extends Model
         return $this->hasMany(Project::class);
     }
 
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(TeamInvitation::class);
+    }
+
     public function owners(): BelongsToMany
     {
         return $this->members()->wherePivot('role', TeamRole::Owner->value);

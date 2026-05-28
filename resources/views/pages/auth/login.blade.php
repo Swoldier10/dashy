@@ -46,7 +46,7 @@
                             id="email"
                             name="email"
                             type="email"
-                            value="{{ old('email') }}"
+                            value="{{ old('email', request('email')) }}"
                             required
                             autofocus
                             autocomplete="email"

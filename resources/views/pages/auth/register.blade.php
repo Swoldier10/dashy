@@ -122,7 +122,7 @@ use App\Domains\Auth\Enums\Salutation;
                             id="email"
                             name="email"
                             type="email"
-                            value="{{ old('email') }}"
+                            value="{{ old('email', request('email')) }}"
                             required
                             autocomplete="email"
                             placeholder="you@company.com"

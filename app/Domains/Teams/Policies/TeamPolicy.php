@@ -33,6 +33,16 @@ class TeamPolicy
         return $this->isOwner($user, $team);
     }
 
+    public function inviteMember(User $user, Team $team): bool
+    {
+        return $this->isOwner($user, $team);
+    }
+
+    public function manageInvitations(User $user, Team $team): bool
+    {
+        return $this->isOwner($user, $team);
+    }
+
     private function isMember(User $user, Team $team): bool
     {
         return $team->members()->whereKey($user->id)->exists();

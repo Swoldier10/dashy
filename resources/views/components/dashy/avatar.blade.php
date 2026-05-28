@@ -3,6 +3,7 @@
     'initials' => null,
     'src' => null,
     'size' => 'md', // xs | sm | md | lg
+    'shape' => 'round', // round (users) | square (teams, projects, non-human entities)
     'online' => false,
 ])
 
@@ -19,6 +20,7 @@
     {{ $attributes->class([
         'dashy-avatar',
         'dashy-avatar--' . $size,
+        'dashy-avatar--square' => $shape === 'square',
         'relative',
     ]) }}
     role="img"

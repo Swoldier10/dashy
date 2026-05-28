@@ -3,11 +3,16 @@
 use App\Domains\Teams\Actions\FindTeamForUserAction;
 use App\Domains\Teams\Enums\Currency;
 use App\Domains\Teams\Enums\TeamRole;
+use App\Domains\Teams\Exceptions\InvitationResendThrottledException;
+use App\Domains\Teams\Exceptions\TeamInvitationException;
 use App\Domains\Teams\Models\Team;
-use App\Domains\Teams\Services\AddTeamMemberService;
 use App\Domains\Teams\Services\DeleteTeamService;
+use App\Domains\Teams\Services\InviteTeamMemberService;
+use App\Domains\Teams\Services\ListPendingInvitationsForTeamService;
 use App\Domains\Teams\Services\RemoveTeamMemberService;
 use App\Domains\Teams\Services\RenameTeamService;
+use App\Domains\Teams\Services\ResendTeamInvitationService;
+use App\Domains\Teams\Services\RevokeTeamInvitationService;
 use App\Domains\Teams\Services\TeamLogoService;
 use App\Domains\Teams\Services\UpdateTeamRateService;
 use App\Models\User;
@@ -32,7 +37,11 @@ new #[Title('Team')] class extends Component
 
     public string $inviteEmail = '';
 
+    public string $inviteRole = 'member';
+
     public ?int $confirmRemoveMemberId = null;
+
+    public ?int $confirmRevokeInvitationId = null;
 
     public ?TemporaryUploadedFile $newLogo = null;
 
@@ -110,18 +119,86 @@ new #[Title('Team')] class extends Component
         $this->toast('success', __('Hourly rate updated.'));
     }
 
-    public function addMember(AddTeamMemberService $service): void
+    #[Computed]
+    public function pendingInvitations()
+    {
+        if (! $this->isOwner) {
+            return collect();
+        }
+
+        return app(ListPendingInvitationsForTeamService::class)
+            ->execute(Auth::user(), $this->team);
+    }
+
+    public function invite(InviteTeamMemberService $service): void
     {
         try {
-            $service->execute(Auth::user(), $this->team, ['email' => $this->inviteEmail]);
+            $service->execute(Auth::user(), $this->team, [
+                'email' => $this->inviteEmail,
+                'role' => $this->inviteRole,
+            ]);
         } catch (ValidationException $e) {
             throw $e;
         }
 
         $this->reset('inviteEmail');
-        unset($this->team);
+        $this->inviteRole = 'member';
+        unset($this->pendingInvitations);
 
-        $this->toast('success', __('Member added.'));
+        $this->toast('success', __('Invitation sent.'));
+    }
+
+    public function resend(ResendTeamInvitationService $service, int $invitationId): void
+    {
+        try {
+            $service->execute(Auth::user(), $invitationId);
+        } catch (InvitationResendThrottledException $e) {
+            $minutes = max(1, (int) ceil($e->retryAfterSeconds / 60));
+            $this->toast('warning', __('Wait :n minutes before resending.', ['n' => $minutes]));
+
+            return;
+        } catch (TeamInvitationException) {
+            $this->toast('danger', __('Could not resend this invitation.'));
+
+            return;
+        }
+
+        unset($this->pendingInvitations);
+        $this->toast('success', __('Invitation resent.'));
+    }
+
+    public function confirmRevoke(int $invitationId): void
+    {
+        $this->confirmRevokeInvitationId = $invitationId;
+        $this->openModal('confirm-revoke-invitation');
+    }
+
+    public function cancelRevoke(): void
+    {
+        $this->confirmRevokeInvitationId = null;
+        $this->closeModal('confirm-revoke-invitation');
+    }
+
+    public function revoke(RevokeTeamInvitationService $service): void
+    {
+        if ($this->confirmRevokeInvitationId === null) {
+            return;
+        }
+
+        try {
+            $service->execute(Auth::user(), $this->confirmRevokeInvitationId);
+        } catch (TeamInvitationException) {
+            $this->confirmRevokeInvitationId = null;
+            $this->closeModal('confirm-revoke-invitation');
+            $this->toast('danger', __('Could not revoke this invitation.'));
+
+            return;
+        }
+
+        $this->confirmRevokeInvitationId = null;
+        $this->closeModal('confirm-revoke-invitation');
+        unset($this->pendingInvitations);
+        $this->toast('success', __('Invitation revoked.'));
     }
 
     public function confirmRemoveMember(int $memberId): void
@@ -229,6 +306,7 @@ new #[Title('Team')] class extends Component
         <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
             <x-dashy.avatar
                 size="lg"
+                shape="square"
                 :name="$team->name"
                 :initials="$team->initials()"
                 :src="$team->logo"
@@ -451,21 +529,109 @@ new #[Title('Team')] class extends Component
             @endforeach
         </div>
 
-        {{-- Add member --}}
+        {{-- Pending invitations --}}
+        @if ($isOwner && $this->pendingInvitations->isNotEmpty())
+            <div class="mt-6">
+                <p class="text-xs font-medium uppercase tracking-wide mb-3" style="color: var(--ink-muted);">
+                    {{ __('Pending invitations') }}
+                </p>
+                <div class="flex flex-col gap-2">
+                    @foreach ($this->pendingInvitations as $invitation)
+                        @php
+                            $isExpired = $invitation->isExpired();
+                            $invitationRoleEnum = $invitation->role instanceof TeamRole
+                                ? $invitation->role
+                                : ($invitation->role !== null ? TeamRole::from($invitation->role) : null);
+                            $elapsed = $invitation->last_sent_at?->diffInSeconds(now(), false) ?? 3600;
+                            $canResend = $elapsed >= 3600;
+                            $resendWait = $canResend ? null : max(1, (int) ceil((3600 - $elapsed) / 60));
+                        @endphp
+                        <div
+                            wire:key="invitation-{{ $invitation->id }}"
+                            class="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                            style="border-color: var(--border-mid); background-color: var(--surface);"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="flex size-9 shrink-0 items-center justify-center rounded-full" style="background-color: var(--surface-2);">
+                                    <x-dashy.icon name="envelope" class="size-4" style="color: var(--ink-muted);" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium" style="color: var(--ink);">
+                                        {{ $invitation->email }}
+                                    </p>
+                                    <p class="truncate text-xs" style="color: var(--ink-muted);">
+                                        {{ __('Invited by :name · :ago', [
+                                            'name' => $invitation->invitedBy?->name ?? __('Unknown'),
+                                            'ago' => $invitation->created_at?->diffForHumans(),
+                                        ]) }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                <span
+                                    class="rounded-full px-2.5 py-0.5 text-xs"
+                                    style="background-color: var(--surface-2); color: var(--ink-muted);"
+                                >
+                                    {{ $this->roleLabel($invitationRoleEnum) }}
+                                </span>
+                                @if ($isExpired)
+                                    <x-dashy.badge variant="danger">{{ __('Expired') }}</x-dashy.badge>
+                                @else
+                                    <x-dashy.badge variant="warning">{{ __('Pending') }}</x-dashy.badge>
+                                @endif
+
+                                <x-dashy.button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    :disabled="! $canResend"
+                                    wire:click="resend({{ $invitation->id }})"
+                                    :title="$canResend ? __('Resend invitation') : __('Wait :n minutes before resending.', ['n' => $resendWait])"
+                                    data-test="resend-invitation-{{ $invitation->id }}"
+                                >
+                                    {{ __('Resend') }}
+                                </x-dashy.button>
+                                <x-dashy.button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    wire:click="confirmRevoke({{ $invitation->id }})"
+                                    data-test="revoke-invitation-{{ $invitation->id }}"
+                                >
+                                    {{ __('Revoke') }}
+                                </x-dashy.button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        {{-- Invite by email --}}
         @if ($isOwner)
-            <form wire:submit="addMember" class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <form wire:submit="invite" class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div class="flex-1">
                     <x-dashy.input
                         wire:model="inviteEmail"
                         type="email"
-                        :label="__('Add member by email')"
+                        :label="__('Invite member by email')"
                         :placeholder="__('person@example.com')"
                         autocomplete="off"
-                        data-test="add-member-email"
+                        data-test="invite-email"
                     />
                 </div>
-                <x-dashy.button variant="primary" type="submit" class="w-full sm:w-auto" data-test="add-member-button">
-                    {{ __('Add member') }}
+                <div class="sm:w-40">
+                    <x-dashy.select
+                        wire:model="inviteRole"
+                        :label="__('Role')"
+                        data-test="invite-role"
+                    >
+                        <option value="member">{{ __('Member') }}</option>
+                        <option value="owner">{{ __('Owner') }}</option>
+                    </x-dashy.select>
+                </div>
+                <x-dashy.button variant="primary" type="submit" class="w-full sm:w-auto" data-test="send-invite">
+                    {{ __('Send invitation') }}
                 </x-dashy.button>
             </form>
         @endif
@@ -507,6 +673,26 @@ new #[Title('Team')] class extends Component
                 </x-dashy.modal.close>
                 <x-dashy.button variant="danger" wire:click="removeMember" data-test="confirm-remove-member">
                     {{ __('Remove') }}
+                </x-dashy.button>
+            </div>
+        </div>
+    </x-dashy.modal>
+
+    {{-- Confirm revoke invitation modal --}}
+    <x-dashy.modal name="confirm-revoke-invitation" focusable class="max-w-md" wire:close="cancelRevoke">
+        <div class="space-y-4">
+            <x-dashy.heading size="lg">{{ __('Revoke this invitation?') }}</x-dashy.heading>
+            <x-dashy.subheading>
+                {{ __('The invitation link will stop working. You can send a new one anytime.') }}
+            </x-dashy.subheading>
+            <div class="flex justify-end gap-2">
+                <x-dashy.modal.close>
+                    <x-dashy.button type="button" variant="filled" wire:click="cancelRevoke">
+                        {{ __('Cancel') }}
+                    </x-dashy.button>
+                </x-dashy.modal.close>
+                <x-dashy.button variant="danger" wire:click="revoke" data-test="confirm-revoke-invitation">
+                    {{ __('Revoke') }}
                 </x-dashy.button>
             </div>
         </div>

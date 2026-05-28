@@ -108,6 +108,7 @@ new #[Title('Teams')] class extends Component
                 >
                     <x-dashy.avatar
                         size="sm"
+                        shape="square"
                         :name="$team->name"
                         :initials="$team->initials()"
                         :src="$team->logo"

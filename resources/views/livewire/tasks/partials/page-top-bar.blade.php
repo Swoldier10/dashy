@@ -23,6 +23,19 @@
         <span class="text-[11px] font-semibold uppercase tracking-wider"
               style="color: var(--ink-dim);">{{ __('Tasks') }}</span>
         <span class="font-display text-base sm:text-lg" style="color: var(--ink);">{{ __('Workspace') }}</span>
+
+        <a
+            href="{{ route('teams.index') }}"
+            wire:navigate
+            class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition"
+            style="color: var(--ink-muted);"
+            onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--surface-2)';"
+            onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='transparent';"
+            data-test="tasks-new-team"
+        >
+            <x-dashy.icon name="plus" class="size-3.5" />
+            <span>{{ __('New team') }}</span>
+        </a>
     </div>
 
     {{-- Team chip strip --}}
@@ -80,17 +93,5 @@
             </a>
         @endforeach
 
-        <a
-            href="{{ route('teams.index') }}"
-            wire:navigate
-            class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition"
-            style="color: var(--ink-muted);"
-            onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--surface-2)';"
-            onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='transparent';"
-            data-test="tasks-new-team"
-        >
-            <x-dashy.icon name="plus" class="size-3.5" />
-            <span>{{ __('New team') }}</span>
-        </a>
     </div>
 </div>

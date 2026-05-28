@@ -408,6 +408,7 @@ new #[Title('Tasks')] class extends Component
                 'project' => $this->project,
                 'title' => $this->project->name,
                 'showArchived' => $this->showArchived,
+                'settingsTeamId' => $this->project->team_id,
             ])
 
             {{-- Tasks / Dashboard segmented switch (preserved from the prior tab UI). --}}

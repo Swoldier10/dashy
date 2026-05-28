@@ -634,6 +634,7 @@ new #[Title('All tasks')] class extends Component
                 'project' => null,
                 'title' => $this->activeTeam ? $this->activeTeam->name : __('All tasks'),
                 'showArchived' => $this->showArchived,
+                'settingsTeamId' => $this->activeTeam?->id,
             ])
 
             <div class="flex flex-col gap-3">

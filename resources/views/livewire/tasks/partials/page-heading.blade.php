@@ -4,11 +4,13 @@
      * @var ?\App\Domains\Projects\Models\Project $project   // null on aggregator
      * @var string $title
      * @var bool $showArchived
+     * @var ?int $settingsTeamId   // when set, render a Team-settings link inline with the title
      */
     $breadcrumb = $breadcrumb ?? [];
     $project = $project ?? null;
     $title = $title ?? __('All tasks');
     $showArchived = $showArchived ?? false;
+    $settingsTeamId = $settingsTeamId ?? null;
 @endphp
 
 <div class="flex flex-col gap-2" data-test="page-heading">
@@ -46,6 +48,21 @@
         <h1 class="min-w-0 flex-1 truncate font-display text-xl sm:text-2xl" style="color: var(--ink); line-height: 1.2;" data-test="page-heading-title">
             {{ $title }}
         </h1>
+
+        @if ($settingsTeamId !== null)
+            <a
+                href="{{ route('teams.show', $settingsTeamId) }}"
+                wire:navigate
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition"
+                style="color: var(--ink-muted);"
+                onmouseover="this.style.color='var(--ink)'; this.style.backgroundColor='var(--surface-2)';"
+                onmouseout="this.style.color='var(--ink-muted)'; this.style.backgroundColor='transparent';"
+                data-test="tasks-team-settings"
+            >
+                <x-dashy.icon name="cog-6-tooth" class="size-3.5" />
+                <span>{{ __('Team settings') }}</span>
+            </a>
+        @endif
     </div>
 
     {{-- Toolbar — full width, sidebar-coloured strip with outlined icon buttons. --}}

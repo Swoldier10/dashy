@@ -6,6 +6,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
 
+// Public — accepts both guest and authenticated visitors.
+Route::livewire('invite/{token}', 'pages::invite.show')
+    ->where('token', '[A-Za-z0-9_-]+')
+    ->name('invite.show');
+
 Route::middleware('guest')->group(function () {
     Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])
         ->name('auth.google.redirect');
