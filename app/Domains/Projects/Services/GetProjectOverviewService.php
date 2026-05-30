@@ -4,8 +4,9 @@ namespace App\Domains\Projects\Services;
 
 use App\Domains\Projects\Actions\FindProjectAction;
 use App\Domains\Projects\Models\Project;
-use App\Domains\Tasks\Actions\ListTasksForProjectAction;
+use App\Domains\Tasks\Services\ListTasksForProjectService;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
@@ -19,7 +20,7 @@ final class GetProjectOverviewService
 {
     public function __construct(
         private FindProjectAction $findProject,
-        private ListTasksForProjectAction $listTasks,
+        private ListTasksForProjectService $listTasks,
     ) {}
 
     /**
@@ -29,12 +30,13 @@ final class GetProjectOverviewService
     {
         $project = $this->findProject->execute($projectId);
 
-        $isMember = $project->team->members()->whereKey($actor->id)->exists();
-        if (! $isMember) {
+        // Reshape the AuthorizationException into the 404-shaped error the
+        // AI chat tool relies on to avoid leaking project existence.
+        try {
+            $tasks = $this->listTasks->execute($actor, $project, includeArchived: false);
+        } catch (AuthorizationException) {
             throw new ModelNotFoundException;
         }
-
-        $tasks = $this->listTasks->execute($project, includeArchived: false);
 
         $byStatus = $project->statuses->mapWithKeys(fn ($status) => [
             $status->id => [

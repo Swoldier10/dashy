@@ -4,7 +4,7 @@ namespace App\Domains\Preferences\Services;
 
 use App\Domains\Preferences\Actions\DeleteTeamPreferenceAction;
 use App\Domains\Preferences\Actions\DeleteUserPreferenceAction;
-use App\Domains\Teams\Actions\FindTeamForUserAction;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +19,7 @@ final class ForgetMemoryService
     public function __construct(
         private DeleteUserPreferenceAction $deleteUser,
         private DeleteTeamPreferenceAction $deleteTeam,
-        private FindTeamForUserAction $findTeamForUser,
+        private FindTeamForUserService $findTeamForUser,
     ) {}
 
     public function execute(User $actor, string $scope, string $key, ?int $teamId = null): bool

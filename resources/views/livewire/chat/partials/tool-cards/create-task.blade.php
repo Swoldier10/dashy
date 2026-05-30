@@ -44,16 +44,7 @@
     @elseif ($isPending)
         {{-- Editable body --}}
         <div class="space-y-3 px-4 py-4">
-            @if ($validationErrors !== [])
-                <ul class="list-disc space-y-1 rounded-md border px-4 py-2 pl-8 text-sm"
-                    style="border-color: var(--state-error); color: var(--state-error); background-color: rgba(220, 38, 38, 0.06);"
-                    data-test="tool-call-validation-errors"
-                >
-                    @foreach ($validationErrors as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            @endif
+            @include('livewire.chat.partials.tool-cards.validation-errors')
 
             <x-dashy.input
                 :label="__('Name')"
@@ -178,7 +169,7 @@
                         </span>
                         <span
                             class="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
-                            style="background-color: rgba(241, 232, 216, 0.06); color: var({{ $card['task_status']['color_var'] }});"
+                            style="background-color: color-mix(in srgb, var({{ $card['task_status']['color_var'] }}) 14%, transparent); color: var({{ $card['task_status']['color_var'] }});"
                         >
                             {{ $card['task_status']['name'] }}
                         </span>
@@ -192,7 +183,7 @@
                         </span>
                         <span
                             class="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
-                            style="background-color: rgba(241, 232, 216, 0.06); color: var({{ $card['priority']['color_var'] }});"
+                            style="background-color: color-mix(in srgb, var({{ $card['priority']['color_var'] }}) 14%, transparent); color: var({{ $card['priority']['color_var'] }});"
                         >
                             {{ $card['priority']['label'] }}
                         </span>
@@ -287,7 +278,7 @@
                 wire:click="confirmToolCall({{ $message->id }})"
                 wire:loading.attr="disabled"
                 class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition"
-                style="background-color: var(--blue); color: white;"
+                style="background-color: var(--blue); color: var(--surface);"
                 onmouseover="this.style.opacity='0.9'"
                 onmouseout="this.style.opacity='1'"
                 data-test="confirm-tool-call"

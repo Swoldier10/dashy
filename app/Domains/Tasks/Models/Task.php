@@ -5,15 +5,18 @@ namespace App\Domains\Tasks\Models;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Models\ProjectStatus;
 use App\Domains\Tasks\Enums\TaskPriority;
+use App\Domains\Tasks\Observers\TaskSearchObserver;
 use App\Domains\TimeTracking\Models\TimeEntry;
 use App\Models\User;
 use Database\Factories\TaskFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([TaskSearchObserver::class])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */

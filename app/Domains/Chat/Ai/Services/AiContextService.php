@@ -2,17 +2,17 @@
 
 namespace App\Domains\Chat\Ai\Services;
 
-use App\Domains\Chat\Ai\Actions\LoadAiWorkspaceContextAction;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Models\ProjectStatus;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Teams\Models\Team;
+use App\Domains\Teams\Services\ListWorkspaceTreeForUserService;
 use App\Models\User;
 
 final class AiContextService
 {
     public function __construct(
-        private LoadAiWorkspaceContextAction $loadWorkspace,
+        private ListWorkspaceTreeForUserService $loadWorkspace,
     ) {}
 
     /**

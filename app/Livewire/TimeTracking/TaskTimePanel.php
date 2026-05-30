@@ -3,18 +3,20 @@
 namespace App\Livewire\TimeTracking;
 
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Tasks\Services\FindTaskService;
 use App\Domains\TimeTracking\Models\TimeEntry;
 use App\Domains\TimeTracking\Services\DeleteTimeEntryService;
+use App\Domains\TimeTracking\Services\FindTimeEntryService;
 use App\Domains\TimeTracking\Services\ListTaskTimeEntriesService;
 use App\Domains\TimeTracking\Services\LogManualTimeService;
 use App\Domains\TimeTracking\Services\StartTimerService;
 use App\Domains\TimeTracking\Services\StopTimerService;
 use App\Domains\TimeTracking\Services\UpdateTimeEntryService;
+use App\Livewire\Concerns\StopsActiveTimer;
 use App\Models\User;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -22,6 +24,7 @@ use Livewire\Component;
 class TaskTimePanel extends Component
 {
     use DispatchesDashyUi;
+    use StopsActiveTimer;
 
     public int $taskId = 0;
 
@@ -53,7 +56,7 @@ class TaskTimePanel extends Component
             return null;
         }
 
-        return Task::query()->findOrFail($this->taskId);
+        return app(FindTaskService::class)->execute(Auth::user(), $this->taskId);
     }
 
     /**
@@ -144,11 +147,7 @@ class TaskTimePanel extends Component
 
     public function stopTimer(StopTimerService $service): void
     {
-        try {
-            $service->execute(Auth::user());
-        } catch (ValidationException $e) {
-            $this->toast('danger', collect($e->errors())->flatten()->first());
-
+        if (! $this->stopActiveTimer($service)) {
             return;
         }
 
@@ -198,7 +197,7 @@ class TaskTimePanel extends Component
 
     public function saveEntry(int $entryId, UpdateTimeEntryService $service): void
     {
-        $entry = TimeEntry::query()->findOrFail($entryId);
+        $entry = app(FindTimeEntryService::class)->execute(Auth::user(), $entryId);
 
         $service->execute(Auth::user(), $entry, [
             'duration' => $this->editDuration,
@@ -213,7 +212,7 @@ class TaskTimePanel extends Component
 
     public function deleteEntry(int $entryId, DeleteTimeEntryService $service): void
     {
-        $entry = TimeEntry::query()->findOrFail($entryId);
+        $entry = app(FindTimeEntryService::class)->execute(Auth::user(), $entryId);
         $service->execute(Auth::user(), $entry);
 
         if ($this->editingEntryId === $entryId) {

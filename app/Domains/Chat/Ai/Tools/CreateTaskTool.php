@@ -2,24 +2,38 @@
 
 namespace App\Domains\Chat\Ai\Tools;
 
+use App\Domains\Auth\Services\FindUsersByIdsService;
 use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
-use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Models\Chat;
-use App\Domains\Chat\Models\Message;
+use App\Domains\Chat\Services\FindLatestUserMessageImagesService;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
-use App\Domains\Projects\Models\Project;
+use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\FindProjectStatusService;
+use App\Domains\Projects\Services\FindProjectWithTeamMembersService;
+use App\Domains\Projects\Services\ListProjectStatusesForProjectService;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Services\CreateTaskService;
+use App\Domains\Tasks\Services\FindTaskService;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 use Throwable;
 
-final class CreateTaskTool implements AiTool
+final class CreateTaskTool implements AiTool, PresentsToolCard
 {
     public function __construct(
         private CreateTaskService $createTask,
+        private FindProjectWithTeamMembersService $findProject,
+        private FindLatestUserMessageImagesService $latestImages,
+        private ListProjectStatusesForProjectService $listProjectStatuses,
+        private FindProjectStatusService $findStatus,
+        private FindUsersByIdsService $findUsers,
+        private FindTaskService $findTask,
     ) {}
 
     public function name(): string
@@ -81,13 +95,12 @@ final class CreateTaskTool implements AiTool
             $errors[] = 'name is required.';
         }
 
-        $project = Project::query()
-            ->with(['team.members:id', 'statuses'])
-            ->find($projectId);
-
-        if ($project === null || ! $project->team->members->contains('id', $user->id)) {
+        try {
+            $project = $this->findProject->execute($user, $projectId);
+        } catch (ModelNotFoundException|AuthorizationException) {
             return AiToolValidationResult::fail(['You do not have access to that project.']);
         }
+        $project->loadMissing('statuses');
 
         // The LLM frequently picks a status_id from a different project. Rather
         // than failing the whole tool call (and confusing the user), silently
@@ -201,7 +214,7 @@ final class CreateTaskTool implements AiTool
 
     public function execute(User $user, array $arguments): array
     {
-        $project = Project::query()->findOrFail((int) $arguments['project_id']);
+        $project = $this->findProject->execute($user, (int) $arguments['project_id']);
 
         $task = $this->createTask->execute($user, $project, [
             'name' => $arguments['name'],
@@ -222,9 +235,9 @@ final class CreateTaskTool implements AiTool
 
     /**
      * Pull image attachments from the most recent user message in the chat —
-     * the message that prompted the LLM to emit this tool call. Attachments
-     * are snapshotted at validation time so they survive intermediate user
-     * messages between preview and confirm.
+     * the message that prompted the LLM to emit this tool call. Snapshotted at
+     * validation time so they survive intermediate user messages between
+     * preview and confirm. The DB read lives in a Chat-domain service.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -234,30 +247,11 @@ final class CreateTaskTool implements AiTool
             return [];
         }
 
-        $latest = $chat->messages()
-            ->where('role', MessageRole::User->value)
-            ->orderByDesc('id')
-            ->first(['attachments']);
-
-        if (! $latest instanceof Message) {
-            return [];
-        }
-
-        return collect($latest->attachments ?? [])
-            ->where('type', 'image')
-            ->map(fn (array $att) => [
-                'path' => $att['path'] ?? null,
-                'url' => $att['url'] ?? null,
-                'mime' => $att['mime'] ?? null,
-                'name' => $att['name'] ?? null,
-            ])
-            ->filter(fn (array $att) => is_string($att['path']) && is_string($att['url']))
-            ->values()
-            ->all();
+        return $this->latestImages->execute($chat);
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, \App\Domains\Projects\Models\ProjectStatus>  $statuses
+     * @param  Collection<int, ProjectStatus>  $statuses
      */
     private function defaultStatusId($statuses): ?int
     {
@@ -291,5 +285,93 @@ final class CreateTaskTool implements AiTool
         }
 
         return $date;
+    }
+
+    public function presentCard(array $toolCall, User $user): array
+    {
+        $args = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+
+        $view = [
+            'name' => $toolCall['name'] ?? null,
+            'status' => (string) ($toolCall['status'] ?? 'pending'),
+            'task_name' => (string) ($args['name'] ?? ''),
+            'description' => (string) ($args['description'] ?? ''),
+            'priority' => null,
+            'project' => null,
+            'task_status' => null,
+            'start_date' => $args['start_date'] ?? null,
+            'end_date' => $args['end_date'] ?? null,
+            'assignees' => [],
+            'images' => [],
+            'validation_errors' => (array) ($toolCall['validation_errors'] ?? []),
+            'created_task_id' => null,
+            'assignee_user_ids' => array_values(array_map('intval', (array) ($args['assignee_user_ids'] ?? []))),
+            'available_priorities' => array_map(
+                static fn (TaskPriority $p) => ['value' => $p->value, 'label' => $p->label(), 'color_var' => $p->colorVar()],
+                TaskPriority::cases(),
+            ),
+            'available_statuses' => [],
+            'available_assignees' => [],
+        ];
+
+        $view['images'] = array_values(array_filter(array_map(static function ($att): ?array {
+            if (! is_array($att) || ! is_string($att['url'] ?? null) || $att['url'] === '') {
+                return null;
+            }
+
+            return ['url' => $att['url'], 'name' => is_string($att['name'] ?? null) ? $att['name'] : null];
+        }, (array) ($args['image_attachments'] ?? []))));
+
+        $assigneeIds = array_map('intval', (array) ($args['assignee_user_ids'] ?? []));
+        if ($assigneeIds !== []) {
+            $view['assignees'] = $this->findUsers->execute($assigneeIds)
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
+                ->values()
+                ->all();
+        }
+
+        $priorityValue = $args['priority'] ?? null;
+        if (is_string($priorityValue) && ($priority = TaskPriority::tryFrom($priorityValue)) !== null) {
+            $view['priority'] = ['value' => $priority->value, 'label' => $priority->label(), 'color_var' => $priority->colorVar()];
+        }
+
+        $projectId = $args['project_id'] ?? null;
+        if (is_int($projectId) || (is_string($projectId) && ctype_digit($projectId))) {
+            try {
+                $project = $this->findProject->execute($user, (int) $projectId);
+                $view['project'] = ['id' => $project->id, 'name' => $project->name];
+                $view['available_statuses'] = $this->listProjectStatuses->execute($user, $project)
+                    ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'category' => $s->category->value, 'color_var' => $s->category->colorVar()])
+                    ->values()
+                    ->all();
+                $view['available_assignees'] = $project->team->members
+                    ->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])
+                    ->values()
+                    ->all();
+            } catch (Throwable) {
+                // project gone between turn and render — keep defaults.
+            }
+        }
+
+        $statusId = $args['status_id'] ?? null;
+        if (is_int($statusId) || (is_string($statusId) && ctype_digit($statusId))) {
+            try {
+                $taskStatus = $this->findStatus->execute($user, (int) $statusId);
+                $view['task_status'] = ['id' => $taskStatus->id, 'name' => $taskStatus->name, 'category' => $taskStatus->category->value, 'color_var' => $taskStatus->category->colorVar()];
+            } catch (Throwable) {
+                // status gone — leave null
+            }
+        }
+
+        $result = $toolCall['result'] ?? null;
+        if (is_array($result) && isset($result['task_id'])) {
+            try {
+                $view['created_task_id'] = $this->findTask->execute($user, (int) $result['task_id'])->id;
+            } catch (Throwable) {
+                $view['created_task_id'] = (int) $result['task_id'];
+            }
+        }
+
+        return $view;
     }
 }

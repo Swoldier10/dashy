@@ -2,14 +2,12 @@
 
 namespace App\Domains\TimeTracking\Services;
 
-use App\Domains\Projects\Actions\FindProjectAction;
-use App\Domains\Tasks\Models\Task;
+use App\Domains\Projects\Services\FindProjectService;
 use App\Domains\TimeTracking\Actions\CountDailyEntriesForProjectAction;
 use App\Domains\TimeTracking\Actions\SumDailyHoursForProjectAction;
 use App\Domains\TimeTracking\Actions\SumTotalHoursForProjectAction;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Gate;
 
 class ProjectTimeStatsService
 {
@@ -17,7 +15,7 @@ class ProjectTimeStatsService
         private readonly SumDailyHoursForProjectAction $daily,
         private readonly CountDailyEntriesForProjectAction $dailyCount,
         private readonly SumTotalHoursForProjectAction $total,
-        private readonly FindProjectAction $find,
+        private readonly FindProjectService $find,
     ) {}
 
     /**
@@ -28,8 +26,7 @@ class ProjectTimeStatsService
      */
     public function dailyHoursForMonth(User $actor, int $projectId, CarbonImmutable $monthAnchor, ?int $userId = null): array
     {
-        $project = $this->find->execute($projectId);
-        Gate::forUser($actor)->authorize('viewAny', [Task::class, $project]);
+        $project = $this->find->execute($actor, $projectId);
 
         $start = $monthAnchor->startOfMonth();
         $end = $monthAnchor->endOfMonth()->endOfDay();
@@ -55,8 +52,7 @@ class ProjectTimeStatsService
      */
     public function dailyEntryCountsForMonth(User $actor, int $projectId, CarbonImmutable $monthAnchor, ?int $userId = null): array
     {
-        $project = $this->find->execute($projectId);
-        Gate::forUser($actor)->authorize('viewAny', [Task::class, $project]);
+        $project = $this->find->execute($actor, $projectId);
 
         $start = $monthAnchor->startOfMonth();
         $end = $monthAnchor->endOfMonth()->endOfDay();
@@ -76,8 +72,7 @@ class ProjectTimeStatsService
 
     public function totalSecondsForProject(User $actor, int $projectId, ?int $userId = null): int
     {
-        $project = $this->find->execute($projectId);
-        Gate::forUser($actor)->authorize('viewAny', [Task::class, $project]);
+        $project = $this->find->execute($actor, $projectId);
 
         return $this->total->execute($projectId, $userId);
     }
@@ -90,8 +85,7 @@ class ProjectTimeStatsService
      */
     public function billingRateForProject(User $actor, int $projectId): ?array
     {
-        $project = $this->find->execute($projectId);
-        Gate::forUser($actor)->authorize('viewAny', [Task::class, $project]);
+        $project = $this->find->execute($actor, $projectId);
 
         $team = $project->team;
         if ($team === null || $team->hourly_rate === null || $team->currency === null) {

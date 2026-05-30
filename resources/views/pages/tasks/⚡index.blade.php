@@ -1,11 +1,12 @@
 <?php
 
-use App\Domains\Projects\Actions\FindProjectAction;
-use App\Domains\Projects\Actions\ListProjectStatusesForProjectAction;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\FindProjectService;
+use App\Domains\Projects\Services\FindProjectWithTeamMembersService;
 use App\Domains\Projects\Services\ListProjectsForUserService;
+use App\Domains\Projects\Services\ListProjectStatusesForProjectService;
 use App\Domains\Projects\Services\ListProjectStatusesForUserService;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
@@ -17,14 +18,15 @@ use App\Domains\Tasks\Services\FindTaskService;
 use App\Domains\Tasks\Services\ListAllTasksForUserService;
 use App\Domains\Tasks\Services\MoveTaskService;
 use App\Domains\Tasks\Services\ReorderTasksService;
+use App\Domains\Tasks\Services\TaskExistsInProjectService;
 use App\Domains\Tasks\Services\ToggleTaskCompleteService;
 use App\Domains\Tasks\Services\UnarchiveTaskService;
 use App\Domains\Tasks\Services\UnassignTaskService;
 use App\Domains\Tasks\Services\UpdateTaskDatesService;
 use App\Domains\Tasks\Services\UpdateTaskPriorityService;
 use App\Domains\Tasks\Services\UpdateTaskStatusService;
-use App\Domains\Teams\Actions\FindTeamForUserAction;
 use App\Domains\Teams\Models\Team;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Domains\Teams\Services\ListTeamsForUserService;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
@@ -77,9 +79,11 @@ new #[Title('All tasks')] class extends Component
         $requestedTaskId = request()->query('task');
         if (is_numeric($requestedTaskId)) {
             $taskId = (int) $requestedTaskId;
-            $exists = Task::query()->whereKey($taskId)->exists();
-            if ($exists) {
+            try {
+                app(FindTaskService::class)->execute(Auth::user(), $taskId);
                 $this->initialTaskId = $taskId;
+            } catch (\Throwable) {
+                // Task missing or no access — silently skip drawer hydration.
             }
         }
     }
@@ -99,7 +103,7 @@ new #[Title('All tasks')] class extends Component
         }
 
         try {
-            return app(FindTeamForUserAction::class)->execute(Auth::user(), $this->teamId);
+            return app(FindTeamForUserService::class)->execute(Auth::user(), $this->teamId);
         } catch (\Throwable) {
             return null;
         }
@@ -278,9 +282,9 @@ new #[Title('All tasks')] class extends Component
         }
 
         try {
-            $project = app(FindProjectAction::class)->execute($this->createProjectId);
+            $project = app(FindProjectService::class)->execute(Auth::user(), $this->createProjectId);
 
-            return collect(app(ListProjectStatusesForProjectAction::class)->execute($project)->all());
+            return collect(app(ListProjectStatusesForProjectService::class)->execute(Auth::user(), $project)->all());
         } catch (\Throwable) {
             return collect();
         }
@@ -295,9 +299,9 @@ new #[Title('All tasks')] class extends Component
         }
 
         try {
-            $project = app(FindProjectAction::class)->execute($this->createProjectId);
+            $project = app(FindProjectWithTeamMembersService::class)->execute(Auth::user(), $this->createProjectId);
 
-            return collect($project->team->members()->get()->all());
+            return collect($project->team->members->all());
         } catch (\Throwable) {
             return collect();
         }
@@ -339,13 +343,13 @@ new #[Title('All tasks')] class extends Component
         $this->createAssigneeIds = array_values($this->createAssigneeIds);
     }
 
-    public function submitCreateTask(CreateTaskService $create, AssignTaskService $assign, FindProjectAction $findProject): void
+    public function submitCreateTask(CreateTaskService $create, AssignTaskService $assign, FindProjectService $findProject): void
     {
         if ($this->createStatusId === null || $this->createProjectId === null) {
             return;
         }
 
-        $project = $findProject->execute($this->createProjectId);
+        $project = $findProject->execute(Auth::user(), $this->createProjectId);
 
         $task = $create->execute(Auth::user(), $project, [
             'name' => $this->createName,
@@ -439,24 +443,9 @@ new #[Title('All tasks')] class extends Component
             return;
         }
 
-        $peerIds = Task::query()
-            ->whereIn('id', array_map('intval', $orderedIds))
-            ->where('project_id', $task->project_id)
-            ->where('project_status_id', $task->project_status_id)
-            ->pluck('id')
-            ->all();
-
-        $peerSet = array_flip($peerIds);
-        $finalOrdered = array_values(array_filter(
-            $orderedIds,
-            fn ($id) => isset($peerSet[(int) $id])
-        ));
-
-        if ($finalOrdered === []) {
-            return;
-        }
-
-        $svc->execute(Auth::user(), $task->project_status_id, $finalOrdered);
+        // The service filters orderedIds down to same-project/status peers
+        // before reordering; the aggregator view spans projects.
+        $svc->execute(Auth::user(), $task->project_status_id, $orderedIds);
         $this->dispatch('task-list-changed');
     }
 
@@ -475,10 +464,11 @@ new #[Title('All tasks')] class extends Component
         array $sourceIds,
         array $targetIds,
         MoveTaskService $svc,
+        ListProjectStatusesForProjectService $listStatuses,
     ): void {
         $task = app(FindTaskService::class)->execute(Auth::user(), $taskId);
 
-        $statuses = app(ListProjectStatusesForProjectAction::class)->execute($task->project);
+        $statuses = $listStatuses->execute(Auth::user(), $task->project);
 
         $targetStatus = $statuses->first(function (ProjectStatus $s) use ($targetBucketKey) {
             $slug = Str::slug(Str::lower(trim($s->name))) ?: 'no-status';
@@ -493,36 +483,10 @@ new #[Title('All tasks')] class extends Component
             return;
         }
 
-        $sourcePeerIds = Task::query()
-            ->whereIn('id', array_map('intval', $sourceIds))
-            ->where('project_id', $task->project_id)
-            ->where('project_status_id', $task->project_status_id)
-            ->pluck('id')
-            ->all();
-
-        $targetPeerIds = Task::query()
-            ->whereIn('id', array_map('intval', $targetIds))
-            ->where('project_id', $task->project_id)
-            ->where(function ($q) use ($targetStatus, $taskId) {
-                $q->where('project_status_id', $targetStatus->id)
-                    ->orWhere('id', $taskId);
-            })
-            ->pluck('id')
-            ->all();
-
-        $sourcePeerSet = array_flip($sourcePeerIds);
-        $targetPeerSet = array_flip($targetPeerIds);
-
-        $finalSource = array_values(array_filter(
-            $sourceIds,
-            fn ($id) => isset($sourcePeerSet[(int) $id])
-        ));
-        $finalTarget = array_values(array_filter(
-            $targetIds,
-            fn ($id) => isset($targetPeerSet[(int) $id])
-        ));
-
-        $svc->execute(Auth::user(), $taskId, $targetStatus->id, $finalSource, $finalTarget);
+        // MoveTaskService filters source/target IDs down to same-project peers
+        // and always re-adds the dragged task to the target list, so the
+        // aggregator can pass the raw client-supplied arrays through.
+        $svc->execute(Auth::user(), $taskId, $targetStatus->id, $sourceIds, $targetIds);
         $this->dispatch('task-list-changed');
     }
 

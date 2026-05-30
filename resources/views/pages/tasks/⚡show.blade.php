@@ -1,8 +1,8 @@
 <?php
 
-use App\Domains\Projects\Actions\FindProjectAction;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
 use App\Domains\Projects\Models\Project;
+use App\Domains\Projects\Services\FindProjectService;
 use App\Domains\Projects\Services\ListProjectsForUserService;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
@@ -15,6 +15,7 @@ use App\Domains\Tasks\Services\ListAllTasksForUserService;
 use App\Domains\Tasks\Services\ListTasksForProjectService;
 use App\Domains\Tasks\Services\MoveTaskService;
 use App\Domains\Tasks\Services\ReorderTasksService;
+use App\Domains\Tasks\Services\TaskExistsInProjectService;
 use App\Domains\Tasks\Services\ToggleTaskCompleteService;
 use App\Domains\Tasks\Services\UnarchiveTaskService;
 use App\Domains\Tasks\Services\UnassignTaskService;
@@ -71,9 +72,9 @@ new #[Title('Tasks')] class extends Component
 
     public ?int $initialTaskId = null;
 
-    public function mount(int $project, FindProjectAction $find): void
+    public function mount(int $project, FindProjectService $findProject): void
     {
-        $resolved = $find->execute($project);
+        $resolved = $findProject->execute(Auth::user(), $project);
         Gate::authorize('viewAny', [Task::class, $resolved]);
         $this->projectId = $resolved->id;
 
@@ -84,11 +85,7 @@ new #[Title('Tasks')] class extends Component
         $requestedTaskId = request()->query('task');
         if (is_numeric($requestedTaskId)) {
             $taskId = (int) $requestedTaskId;
-            $exists = Task::query()
-                ->where('id', $taskId)
-                ->where('project_id', $this->projectId)
-                ->exists();
-            if ($exists) {
+            if (app(TaskExistsInProjectService::class)->execute($taskId, $this->projectId)) {
                 // Hydrate the child drawer on the initial render. Dispatching
                 // `task-detail:open` from mount() doesn't reach the child on
                 // first paint — the event fires post-render. Passing the id as
@@ -101,7 +98,7 @@ new #[Title('Tasks')] class extends Component
     #[Computed]
     public function project(): Project
     {
-        return app(FindProjectAction::class)->execute($this->projectId);
+        return app(FindProjectService::class)->execute(Auth::user(), $this->projectId);
     }
 
     /** @return Collection<int, \App\Domains\Projects\Models\ProjectStatus> */

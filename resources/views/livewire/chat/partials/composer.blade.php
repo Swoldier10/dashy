@@ -251,7 +251,7 @@
                                     type="button"
                                     wire:click="removeAttachment({{ $i }})"
                                     class="absolute right-0.5 top-0.5 grid size-5 place-items-center rounded-full"
-                                    style="background-color: rgba(0, 0, 0, 0.55); color: var(--ink);"
+                                    style="background-color: var(--overlay-scrim); color: var(--surface);"
                                     aria-label="{{ __('Remove attachment') }}"
                                     data-test="composer-remove-{{ $i }}"
                                 >
@@ -386,7 +386,7 @@
                         x-bind:disabled="recording || (isEmpty && (!$wire.persistedAttachments || $wire.persistedAttachments.length === 0))"
                         class="flex size-8 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-30"
                         style="background-color: var(--surface-2); color: var(--ink-muted);"
-                        onmouseover="if (!this.disabled) { this.style.backgroundColor='var(--cocoa)'; this.style.color='#fff'; }"
+                        onmouseover="if (!this.disabled) { this.style.backgroundColor='var(--cocoa)'; this.style.color='var(--surface)'; }"
                         onmouseout="this.style.backgroundColor='var(--surface-2)'; this.style.color='var(--ink-muted)';"
                         aria-label="{{ __('Send') }}"
                         data-test="chat-send"

@@ -12,21 +12,9 @@ class UpsertUserPreferenceAction
      */
     public function execute(int $userId, string $key, mixed $value): UserPreference
     {
-        $pref = UserPreference::query()
-            ->where('user_id', $userId)
-            ->where('key', $key)
-            ->first();
-
-        if ($pref !== null) {
-            $pref->forceFill(['value' => $value])->save();
-
-            return $pref;
-        }
-
-        return UserPreference::create([
-            'user_id' => $userId,
-            'key' => $key,
-            'value' => $value,
-        ]);
+        return UserPreference::updateOrCreate(
+            ['user_id' => $userId, 'key' => $key],
+            ['value' => $value],
+        );
     }
 }

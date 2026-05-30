@@ -4,6 +4,7 @@ namespace App\Domains\Teams\Services;
 
 use App\Domains\Teams\Actions\AttachTeamMemberAction;
 use App\Domains\Teams\Actions\CreateTeamAction;
+use App\Domains\Teams\Actions\FindPersonalTeamForUserAction;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
 use App\Models\User;
@@ -14,6 +15,7 @@ final class EnsurePersonalTeamService
     public function __construct(
         private CreateTeamAction $createTeam,
         private AttachTeamMemberAction $attachMember,
+        private FindPersonalTeamForUserAction $findPersonalTeam,
     ) {}
 
     /**
@@ -23,9 +25,7 @@ final class EnsurePersonalTeamService
     public function execute(User $user): Team
     {
         return DB::transaction(function () use ($user) {
-            $existing = $user->teams()
-                ->where('teams.personal_team', true)
-                ->first();
+            $existing = $this->findPersonalTeam->execute($user);
 
             if ($existing !== null) {
                 return $existing;

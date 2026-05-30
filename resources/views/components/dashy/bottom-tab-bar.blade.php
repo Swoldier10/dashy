@@ -59,7 +59,7 @@
                 $slug = \Illuminate\Support\Str::slug($tab['label']);
                 $attrs = 'data-test="bottom-tab-'.$slug.'" data-active="'.($isActive ? 'true' : 'false').'"';
                 $sharedClasses = 'flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition md:min-h-0 md:flex-none md:px-3.5 md:py-1.5 md:text-sm';
-                $sharedStyle = 'background-color: '.($isActive ? 'var(--cocoa)' : 'transparent').'; color: '.($isActive ? '#fff' : 'var(--ink-muted)').';';
+                $sharedStyle = 'background-color: '.($isActive ? 'var(--cocoa)' : 'transparent').'; color: '.($isActive ? 'var(--surface)' : 'var(--ink-muted)').';';
             @endphp
 
             @if ($isDisabled)

@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Chat\Concerns;
 
-use App\Domains\Chat\Actions\FindLatestUserMessageIdAction;
-use App\Domains\Chat\Actions\ListMessagesForChatAction;
 use App\Domains\Chat\Models\Chat;
+use App\Domains\Chat\Services\FindLatestUserMessageIdService;
+use App\Domains\Chat\Services\ListMessagesForChatService;
 use App\Domains\Chat\Services\SendMessageService;
 use App\Domains\Chat\Services\UpdateChatStopStateService;
 use App\Domains\Codex\DTOs\ChatStreamEvent;
@@ -39,7 +39,7 @@ trait HandlesAssistantStream
             return new Collection;
         }
 
-        return app(ListMessagesForChatAction::class)->execute($chat);
+        return app(ListMessagesForChatService::class)->execute($chat);
     }
 
     /**
@@ -203,6 +203,6 @@ trait HandlesAssistantStream
      */
     protected function latestUserMessageId(Chat $chat): ?int
     {
-        return app(FindLatestUserMessageIdAction::class)->execute($chat);
+        return app(FindLatestUserMessageIdService::class)->execute($chat);
     }
 }

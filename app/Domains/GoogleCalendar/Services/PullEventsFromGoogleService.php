@@ -2,23 +2,27 @@
 
 namespace App\Domains\GoogleCalendar\Services;
 
-use App\Domains\Calendar\Actions\CreateEventAction;
-use App\Domains\Calendar\Actions\DeleteEventAction;
-use App\Domains\Calendar\Actions\UpdateEventAction;
 use App\Domains\Calendar\Enums\EventColor;
 use App\Domains\Calendar\Enums\RecurrenceFreq;
 use App\Domains\Calendar\Models\Event;
+use App\Domains\Calendar\Services\CreateEventService;
+use App\Domains\Calendar\Services\DeleteEventService;
+use App\Domains\Calendar\Services\FindEventService;
+use App\Domains\Calendar\Services\UpdateEventService;
 use App\Domains\GoogleCalendar\Actions\DeleteGoogleCalendarLinkAction;
 use App\Domains\GoogleCalendar\Actions\FindLinkByGoogleEventIdAction;
 use App\Domains\GoogleCalendar\Actions\UpdateGoogleCalendarConnectionAction;
 use App\Domains\GoogleCalendar\Actions\UpsertGoogleCalendarLinkAction;
 use App\Domains\GoogleCalendar\DTOs\SyncOutcome;
 use App\Domains\GoogleCalendar\Models\GoogleCalendarConnection;
-use App\Domains\Tasks\Actions\DeleteTaskAction;
-use App\Domains\Tasks\Actions\UpdateTaskAction;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Tasks\Services\DeleteTaskService;
+use App\Domains\Tasks\Services\FindTaskService;
+use App\Domains\Tasks\Services\UpdateTaskService;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -42,11 +46,13 @@ final class PullEventsFromGoogleService
         private UpsertGoogleCalendarLinkAction $upsertLink,
         private DeleteGoogleCalendarLinkAction $deleteLink,
         private UpdateGoogleCalendarConnectionAction $updateConnection,
-        private CreateEventAction $createEvent,
-        private UpdateEventAction $updateEvent,
-        private DeleteEventAction $deleteEvent,
-        private UpdateTaskAction $updateTask,
-        private DeleteTaskAction $deleteTask,
+        private CreateEventService $createEventService,
+        private UpdateEventService $updateEventService,
+        private DeleteEventService $deleteEventService,
+        private FindEventService $findEventService,
+        private UpdateTaskService $updateTaskService,
+        private DeleteTaskService $deleteTaskService,
+        private FindTaskService $findTaskService,
     ) {}
 
     public function execute(GoogleCalendarConnection $connection, SyncOutcome $outcome): void
@@ -153,16 +159,7 @@ final class PullEventsFromGoogleService
                 return;
             }
 
-            $syncable = $link->syncable;
-            DB::transaction(function () use ($link, $syncable) {
-                if ($syncable instanceof Event) {
-                    $this->deleteEvent->execute($syncable);
-                } elseif ($syncable instanceof Task) {
-                    $this->deleteTask->execute($syncable);
-                }
-                $this->deleteLink->execute($link);
-            });
-
+            $this->deleteLinkedRow($connection, $link);
             $outcome->deletedLocal++;
 
             return;
@@ -179,17 +176,21 @@ final class PullEventsFromGoogleService
         $googleUpdated = $this->parseTimestamp($item['updated'] ?? null);
 
         if ($link !== null) {
-            $this->updateLinkedRow($link->syncable, $attributes, $googleUpdated);
-            $syncable = $link->syncable instanceof Model ? $link->syncable->fresh() ?? $link->syncable : null;
-            if ($syncable !== null) {
-                DB::transaction(fn () => $this->upsertLink->execute(
-                    $connection,
-                    $syncable,
-                    $googleEventId,
-                    $etag,
-                    $syncable->updated_at ?? Carbon::now(),
-                ));
-            }
+            // Update the local row and refresh its link in ONE transaction so a
+            // failed link upsert rolls back the row change too (no orphan rows).
+            DB::transaction(function () use ($connection, $link, $attributes, $googleUpdated, $googleEventId, $etag) {
+                $this->updateLinkedRow($connection, $link->syncable, $attributes, $googleUpdated);
+                $syncable = $link->syncable instanceof Model ? $link->syncable->fresh() ?? $link->syncable : null;
+                if ($syncable !== null) {
+                    $this->upsertLink->execute(
+                        $connection,
+                        $syncable,
+                        $googleEventId,
+                        $etag,
+                        $syncable->updated_at ?? Carbon::now(),
+                    );
+                }
+            });
             $outcome->pulled++;
 
             return;
@@ -197,32 +198,51 @@ final class PullEventsFromGoogleService
 
         // No link — look for dashyType/dashyLocalId hint.
         [$dashyType, $dashyLocalId] = $this->extractDashyHints($item);
-        $syncable = $this->reconcileExisting($dashyType, $dashyLocalId, $connection->user_id, $attributes);
 
-        if ($syncable === null) {
-            $syncable = DB::transaction(fn () => $this->createEvent->execute([
-                'user_id' => $connection->user_id,
-                'title' => $attributes['title'],
-                'description' => $attributes['description'],
-                'start_at' => $attributes['start_at'],
-                'end_at' => $attributes['end_at'],
-                'is_all_day' => $attributes['is_all_day'],
-                'color' => EventColor::Danube->value,
-                'location' => $attributes['location'] ?? null,
-                'recurrence_freq' => RecurrenceFreq::None->value,
-                'recurrence_until' => null,
-            ]));
-        }
+        // Reconcile-or-create the local row and write its link in ONE
+        // transaction: if the link upsert fails, the created/updated syncable
+        // is rolled back rather than left orphaned without a sync link.
+        DB::transaction(function () use ($connection, $dashyType, $dashyLocalId, $attributes, $googleEventId, $etag) {
+            $syncable = $this->reconcileExisting($connection, $dashyType, $dashyLocalId, $attributes);
 
-        DB::transaction(fn () => $this->upsertLink->execute(
-            $connection,
-            $syncable,
-            $googleEventId,
-            $etag,
-            $syncable->updated_at ?? Carbon::now(),
-        ));
+            if ($syncable === null) {
+                $syncable = $this->createEventService->execute($connection->user, [
+                    'title' => $attributes['title'],
+                    'description' => $attributes['description'],
+                    'start_at' => $attributes['start_at'],
+                    'end_at' => $attributes['end_at'],
+                    'is_all_day' => $attributes['is_all_day'],
+                    'color' => EventColor::Danube->value,
+                    'location' => $attributes['location'] ?? null,
+                    'recurrence_freq' => RecurrenceFreq::None->value,
+                    'recurrence_until' => null,
+                ]);
+            }
+
+            $this->upsertLink->execute(
+                $connection,
+                $syncable,
+                $googleEventId,
+                $etag,
+                $syncable->updated_at ?? Carbon::now(),
+            );
+        });
 
         $outcome->pulled++;
+    }
+
+    private function deleteLinkedRow(GoogleCalendarConnection $connection, $link): void
+    {
+        $syncable = $link->syncable;
+
+        DB::transaction(function () use ($link, $syncable, $connection) {
+            if ($syncable instanceof Event) {
+                $this->deleteEventService->execute($connection->user, $syncable->id);
+            } elseif ($syncable instanceof Task) {
+                $this->deleteTaskService->execute($connection->user, $syncable->id);
+            }
+            $this->deleteLink->execute($link);
+        });
     }
 
     /**
@@ -284,7 +304,7 @@ final class PullEventsFromGoogleService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function updateLinkedRow(?Model $syncable, array $attributes, ?Carbon $googleUpdated): void
+    private function updateLinkedRow(GoogleCalendarConnection $connection, ?Model $syncable, array $attributes, ?Carbon $googleUpdated): void
     {
         if ($syncable === null) {
             return;
@@ -297,25 +317,25 @@ final class PullEventsFromGoogleService
         }
 
         if ($syncable instanceof Event) {
-            DB::transaction(fn () => $this->updateEvent->execute($syncable, [
+            $this->updateEventService->execute($connection->user, $syncable->id, [
                 'title' => $attributes['title'],
                 'description' => $attributes['description'],
                 'location' => $attributes['location'],
                 'start_at' => $attributes['start_at'],
                 'end_at' => $attributes['end_at'],
                 'is_all_day' => $attributes['is_all_day'],
-            ]));
+            ]);
 
             return;
         }
 
         if ($syncable instanceof Task) {
-            DB::transaction(fn () => $this->updateTask->execute($syncable, [
+            $this->updateTaskService->execute($connection->user, $syncable->id, [
                 'name' => $attributes['title'],
                 'description' => $attributes['description'],
                 'start_date' => $attributes['start_at'],
                 'end_date' => $attributes['end_at'],
-            ]));
+            ]);
         }
     }
 
@@ -345,29 +365,31 @@ final class PullEventsFromGoogleService
      *
      * @param  array<string, mixed>  $attributes
      */
-    private function reconcileExisting(?string $dashyType, ?int $dashyLocalId, int $userId, array $attributes): ?Model
+    private function reconcileExisting(GoogleCalendarConnection $connection, ?string $dashyType, ?int $dashyLocalId, array $attributes): ?Model
     {
         if ($dashyType === null || $dashyLocalId === null) {
             return null;
         }
 
         if ($dashyType === 'event') {
-            $event = Event::query()->where('user_id', $userId)->find($dashyLocalId);
-            if ($event === null) {
+            try {
+                $event = $this->findEventService->execute($connection->user, $dashyLocalId);
+            } catch (ModelNotFoundException|AuthorizationException) {
                 return null;
             }
-            $this->updateLinkedRow($event, $attributes, null);
+            $this->updateLinkedRow($connection, $event, $attributes, null);
 
             return $event->fresh();
         }
 
         if ($dashyType === 'task') {
-            $task = Task::query()->find($dashyLocalId);
-            if ($task === null) {
+            try {
+                $task = $this->findTaskService->execute($connection->user, $dashyLocalId);
+            } catch (ModelNotFoundException|AuthorizationException) {
                 return null;
             }
             // Only update timing/title — don't trigger assignment changes from Google.
-            $this->updateLinkedRow($task, $attributes, null);
+            $this->updateLinkedRow($connection, $task, $attributes, null);
 
             return $task->fresh();
         }

@@ -1,9 +1,9 @@
 <?php
 
-use App\Domains\Teams\Actions\ListTeamsForUserAction;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
 use App\Domains\Teams\Services\CreateTeamService;
+use App\Domains\Teams\Services\ListTeamsForUserService;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +40,7 @@ new #[Title('Teams')] class extends Component
     #[Computed]
     public function teams(): Collection
     {
-        return app(ListTeamsForUserAction::class)->execute(Auth::user());
+        return app(ListTeamsForUserService::class)->execute(Auth::user());
     }
 
     public function roleLabelFor(Team $team): string

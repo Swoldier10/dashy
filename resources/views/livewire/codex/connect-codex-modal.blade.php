@@ -27,7 +27,7 @@
             </div>
 
             @if ($userCode !== null)
-                <div class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <div class="space-y-3 rounded-lg border p-4" style="border-color: var(--border-mid);">
                     <x-dashy.text variant="subtle" class="text-xs uppercase tracking-wide">{{ __('Step 1 — open this URL') }}</x-dashy.text>
                     <a href="{{ $verificationUrl }}" target="_blank" rel="noopener" class="break-all text-sm underline">
                         {{ $verificationUrl }}
@@ -36,7 +36,7 @@
                     <x-dashy.separator variant="subtle" />
 
                     <x-dashy.text variant="subtle" class="text-xs uppercase tracking-wide">{{ __('Step 2 — enter this code') }}</x-dashy.text>
-                    <div class="select-all rounded-md bg-zinc-100 p-3 text-center font-mono text-2xl tracking-[0.3em] dark:bg-zinc-800">
+                    <div class="select-all rounded-md p-3 text-center font-mono text-2xl tracking-[0.3em]" style="background-color: var(--surface-2);">
                         {{ $userCode }}
                     </div>
 

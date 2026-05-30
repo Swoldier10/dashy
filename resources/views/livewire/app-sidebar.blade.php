@@ -39,7 +39,7 @@
                 type="button"
                 x-on:click="$store.modals.open('settings')"
                 class="flex size-9 shrink-0 items-center justify-center rounded-full transition"
-                style="background-color: var(--cocoa); color: #fff;"
+                style="background-color: var(--cocoa); color: var(--surface);"
                 aria-label="{{ __('Open settings') }}"
                 data-test="mobile-user-menu"
             >
@@ -80,7 +80,7 @@
                     type="button"
                     wire:click="startNewChat"
                     class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition"
-                    style="background-color: var(--cocoa); color: #fff;"
+                    style="background-color: var(--cocoa); color: var(--surface);"
                     data-test="mobile-new-chat"
                 >
                     <x-dashy.icon name="plus" class="size-4" />
@@ -250,7 +250,7 @@
                 wire:click="startNewChat"
                 class="flex items-center rounded-lg py-2 text-sm font-medium transition"
                 :class="collapsed ? 'size-10 self-center justify-center p-0' : 'gap-3 px-3'"
-                style="background-color: var(--cocoa); color: #fff;"
+                style="background-color: var(--cocoa); color: var(--surface);"
                 onmouseover="this.style.opacity='0.92'"
                 onmouseout="this.style.opacity='1'"
                 :title="collapsed ? '{{ __('New chat') }}' : ''"
@@ -261,7 +261,7 @@
                 <kbd
                     x-show="!collapsed"
                     class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                    style="background-color: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.72);"
+                    style="background-color: rgba(var(--surface-rgb), 0.16); color: rgba(var(--surface-rgb), 0.72);"
                     aria-hidden="true"
                 >⌘N</kbd>
             </button>
@@ -286,55 +286,56 @@
         {{-- Spacer pushes the bottom block (recent chats / user pill) down. --}}
         <div class="flex-1"></div>
 
-        {{-- Recent chats — visible on every route so the user can jump back
-             into a conversation from anywhere (matches the design mockup).
-             Hidden in the collapsed rail to keep it narrow. --}}
-        @if ($this->chats->isNotEmpty())
+        {{-- Recent chats — surfaced on chat routes so the user can jump back
+             into a conversation. Heading + empty-state line stay visible
+             whether or not the user has any chats yet. Hidden on non-chat
+             routes and in the collapsed rail. --}}
+        @if ($isChatRoute)
             <section x-show="!collapsed" class="flex min-h-0 flex-col gap-1" data-test="sidebar-recents">
                 <p class="px-1 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--ink-dim);">
                     {{ __('Recent chats') }}
                 </p>
                 <div class="max-h-[180px] overflow-y-auto pr-1">
                     @forelse ($this->chats as $chat)
-                        @php $isActive = $activeChatId === $chat->id; @endphp
-                        <div
-                            wire:key="sidebar-chat-{{ $chat->id }}"
-                            class="group relative flex items-center rounded-lg transition"
-                            style="background-color: {{ $isActive ? 'var(--surface-2)' : 'transparent' }};"
-                            @if (! $isActive)
-                                onmouseover="this.style.backgroundColor='var(--surface-2)';"
-                                onmouseout="this.style.backgroundColor='transparent';"
-                            @endif
+                    @php $isActive = $activeChatId === $chat->id; @endphp
+                    <div
+                        wire:key="sidebar-chat-{{ $chat->id }}"
+                        class="group relative flex items-center rounded-lg transition"
+                        style="background-color: {{ $isActive ? 'var(--surface-2)' : 'transparent' }};"
+                        @if (! $isActive)
+                            onmouseover="this.style.backgroundColor='var(--surface-2)';"
+                            onmouseout="this.style.backgroundColor='transparent';"
+                        @endif
+                    >
+                        <a
+                            href="{{ route('chat.show', $chat) }}"
+                            wire:navigate
+                            class="flex flex-1 items-center justify-between gap-2 truncate px-3 py-2 text-sm"
+                            style="color: {{ $isActive ? 'var(--ink)' : 'var(--ink-muted)' }};"
                         >
-                            <a
-                                href="{{ route('chat.show', $chat) }}"
-                                wire:navigate
-                                class="flex flex-1 items-center justify-between gap-2 truncate px-3 py-2 text-sm"
-                                style="color: {{ $isActive ? 'var(--ink)' : 'var(--ink-muted)' }};"
-                            >
-                                <span class="truncate">{{ $chat->title ?? __('New chat') }}</span>
-                                <span class="shrink-0 text-[11px]" style="color: var(--ink-dim);">{{ $chat->updated_at?->diffForHumans(null, true, true) }}</span>
-                            </a>
-                            <button
-                                type="button"
-                                wire:click.stop="confirmDeleteChat({{ $chat->id }})"
-                                class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100"
-                                style="color: var(--ink-dim); background-color: var(--surface);"
-                                onmouseover="this.style.color='var(--ink)';"
-                                onmouseout="this.style.color='var(--ink-dim)';"
-                                aria-label="{{ __('Delete chat') }}"
-                                data-test="sidebar-delete-chat-{{ $chat->id }}"
-                            >
-                                <x-dashy.icon name="trash" class="size-3.5" />
-                            </button>
-                        </div>
-                    @empty
-                        <p class="px-3 py-2 text-sm" style="color: var(--ink-dim);">
-                            {{ __('No chats yet.') }}
-                        </p>
-                    @endforelse
-                </div>
-            </section>
+                            <span class="truncate">{{ $chat->title ?? __('New chat') }}</span>
+                            <span class="shrink-0 text-[11px]" style="color: var(--ink-dim);">{{ $chat->updated_at?->diffForHumans(null, true, true) }}</span>
+                        </a>
+                        <button
+                            type="button"
+                            wire:click.stop="confirmDeleteChat({{ $chat->id }})"
+                            class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition group-hover:opacity-100 focus:opacity-100"
+                            style="color: var(--ink-dim); background-color: var(--surface);"
+                            onmouseover="this.style.color='var(--ink)';"
+                            onmouseout="this.style.color='var(--ink-dim)';"
+                            aria-label="{{ __('Delete chat') }}"
+                            data-test="sidebar-delete-chat-{{ $chat->id }}"
+                        >
+                            <x-dashy.icon name="trash" class="size-3.5" />
+                        </button>
+                    </div>
+                @empty
+                    <p class="px-3 py-2 text-sm" style="color: var(--ink-dim);">
+                        {{ __('No chats yet.') }}
+                    </p>
+                @endforelse
+            </div>
+        </section>
         @endif
 
         {{-- User profile card — opens the global settings modal. Collapses to
@@ -353,7 +354,7 @@
             >
                 <span
                     class="flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-semibold"
-                    style="background-color: var(--cocoa); color: #fff;"
+                    style="background-color: var(--cocoa); color: var(--surface);"
                 >{{ $user->initials() }}</span>
                 <div x-show="!collapsed" class="min-w-0 flex-1">
                     <p class="truncate text-sm font-medium" style="color: var(--ink);">{{ $user->name }}</p>

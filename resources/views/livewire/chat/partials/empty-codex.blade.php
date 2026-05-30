@@ -12,7 +12,7 @@
         type="button"
         x-on:click="$dispatch('open-connect-codex')"
         class="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition"
-        style="background-color: var(--blue); color: white;"
+        style="background-color: var(--blue); color: var(--surface);"
         onmouseover="this.style.opacity='0.9'"
         onmouseout="this.style.opacity='1'"
         data-test="connect-codex-from-chat"

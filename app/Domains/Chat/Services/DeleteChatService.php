@@ -31,15 +31,14 @@ final class DeleteChatService
 
     public function delete(Chat $chat): void
     {
-        DB::transaction(function () use ($chat) {
-            $this->cleanUpAttachmentFiles($chat);
-            $this->deleteAction->execute($chat);
-        });
-    }
-
-    private function cleanUpAttachmentFiles(Chat $chat): void
-    {
+        // Resolve the attachment paths while the rows still exist, delete the
+        // chat inside the transaction, then remove the files only AFTER the
+        // delete has durably committed. Storage::delete is irreversible, so it
+        // must never run inside a transaction that could roll back and leave
+        // surviving rows pointing at already-deleted files.
         $paths = $this->listAttachmentPaths->execute($chat);
+
+        DB::transaction(fn () => $this->deleteAction->execute($chat));
 
         if ($paths !== []) {
             Storage::disk('public')->delete($paths);

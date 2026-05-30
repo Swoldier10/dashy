@@ -5,6 +5,7 @@ namespace App\Domains\Tasks\Services;
 use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ final class BulkAssignTasksService
     public function __construct(
         private FindTaskAction $find,
         private AddTaskAssigneeAction $add,
+        private ListTeamMemberIdsService $listTeamMemberIds,
     ) {}
 
     /**
@@ -41,12 +43,20 @@ final class BulkAssignTasksService
             /** @var Collection<int, Task> $assigned */
             $assigned = new Collection;
 
+            /** @var array<int, list<int>> $memberIdsByTeam */
+            $memberIdsByTeam = [];
+
             foreach ($taskIds as $taskId) {
                 $task = $this->find->execute($taskId);
                 Gate::forUser($actor)->authorize('update', $task);
 
-                $isMember = $task->project->team->members()->whereKey($userId)->exists();
-                if (! $isMember) {
+                $team = $task->project->team;
+                $teamId = (int) $team->id;
+                if (! array_key_exists($teamId, $memberIdsByTeam)) {
+                    $memberIdsByTeam[$teamId] = $this->listTeamMemberIds->execute($team);
+                }
+
+                if (! in_array($userId, $memberIdsByTeam[$teamId], true)) {
                     throw ValidationException::withMessages([
                         'user_id' => __('The selected user is not a member of every target team.'),
                     ]);

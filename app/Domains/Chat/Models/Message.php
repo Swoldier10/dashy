@@ -3,9 +3,12 @@
 namespace App\Domains\Chat\Models;
 
 use App\Domains\Chat\Enums\MessageRole;
+use App\Domains\Chat\Observers\MessageSearchObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([MessageSearchObserver::class])]
 class Message extends Model
 {
     protected $fillable = ['chat_id', 'parent_user_message_id', 'role', 'content', 'attachments', 'tool_call', 'is_summary'];

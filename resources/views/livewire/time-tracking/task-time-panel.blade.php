@@ -87,7 +87,7 @@
                 x-show="open"
                 x-cloak
                 x-transition.opacity.duration.120ms
-                class="absolute left-0 top-[calc(100%+8px)] z-50 flex w-[360px] flex-col overflow-hidden rounded-xl border sm:w-[400px]"
+                class="absolute left-0 top-[calc(100%+8px)] z-50 flex w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border sm:w-[400px]"
                 style="background: var(--surface); border-color: var(--border); box-shadow: 0 24px 60px -20px rgba(var(--ink-rgb), 0.28), 0 4px 12px -4px rgba(var(--ink-rgb), 0.12);"
                 data-test="task-time-popover">
 
@@ -188,7 +188,7 @@
                                     x-show="!(($wire.manualDuration ?? '').trim())"
                                     wire:click="startTimer"
                                     class="inline-flex size-9 shrink-0 items-center justify-center rounded-full transition focus:outline-none focus-visible:ring-2 hover:opacity-90"
-                                    style="background-color: var(--blue); color: #fff; --tw-ring-color: var(--blue);"
+                                    style="background-color: var(--blue); color: var(--surface); --tw-ring-color: var(--blue);"
                                     data-test="task-time-start"
                                     aria-label="{{ __('Start timer') }}"
                                 >
@@ -199,7 +199,7 @@
                                     x-show="!!(($wire.manualDuration ?? '').trim())"
                                     x-cloak
                                     class="inline-flex size-9 shrink-0 items-center justify-center rounded-full transition focus:outline-none focus-visible:ring-2 hover:opacity-90"
-                                    style="background-color: var(--blue); color: #fff; --tw-ring-color: var(--blue);"
+                                    style="background-color: var(--blue); color: var(--surface); --tw-ring-color: var(--blue);"
                                     data-test="task-time-save-manual"
                                     aria-label="{{ __('Save entry') }}"
                                 >

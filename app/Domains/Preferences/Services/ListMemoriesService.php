@@ -6,7 +6,7 @@ use App\Domains\Preferences\Actions\ListTeamPreferencesAction;
 use App\Domains\Preferences\Actions\ListUserPreferencesAction;
 use App\Domains\Preferences\Models\TeamPreference;
 use App\Domains\Preferences\Models\UserPreference;
-use App\Domains\Teams\Actions\FindTeamForUserAction;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -22,7 +22,7 @@ final class ListMemoriesService
     public function __construct(
         private ListUserPreferencesAction $listUser,
         private ListTeamPreferencesAction $listTeam,
-        private FindTeamForUserAction $findTeamForUser,
+        private FindTeamForUserService $findTeamForUser,
     ) {}
 
     /**

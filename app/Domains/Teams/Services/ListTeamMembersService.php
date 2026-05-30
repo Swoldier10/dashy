@@ -3,7 +3,7 @@
 namespace App\Domains\Teams\Services;
 
 use App\Domains\Teams\Actions\FindTeamForUserAction;
-use App\Domains\Teams\Models\Team;
+use App\Domains\Teams\Actions\ListTeamMembersAction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -19,6 +19,7 @@ final class ListTeamMembersService
 {
     public function __construct(
         private FindTeamForUserAction $findTeamForUser,
+        private ListTeamMembersAction $listMembers,
     ) {}
 
     /**
@@ -31,6 +32,6 @@ final class ListTeamMembersService
             throw new ModelNotFoundException;
         }
 
-        return $team->members()->orderBy('name')->get();
+        return $this->listMembers->execute($team);
     }
 }

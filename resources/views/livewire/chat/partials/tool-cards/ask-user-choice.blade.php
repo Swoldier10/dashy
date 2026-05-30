@@ -52,7 +52,7 @@
                         <span
                             class="inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-2 text-sm font-medium sm:min-h-9 sm:py-1.5"
                             @if ($isChosen)
-                                style="border-color: var(--blue); color: var(--blue); background-color: rgba(89, 146, 198, 0.08);"
+                                style="border-color: var(--blue); color: var(--blue); background-color: color-mix(in srgb, var(--blue) 8%, transparent);"
                                 data-test="choice-option-chosen"
                             @else
                                 style="border-color: var(--border-mid); color: var(--ink-dim); background-color: transparent; opacity: 0.6;"

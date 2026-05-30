@@ -36,27 +36,16 @@
         @if ($activeTeam)
             {{-- Single-team view: "All in team" entry + that team's projects flat --}}
             <div class="p-2">
-                <a
-                    href="{{ route('tasks', ['team' => $activeTeam->id]) }}"
-                    wire:navigate
-                    @if ($isEverythingActive) aria-current="page" @endif
-                    class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
-                    style="
-                        background-color: {{ $isEverythingActive ? 'var(--surface)' : 'transparent' }};
-                        color: {{ $isEverythingActive ? 'var(--ink)' : 'var(--ink-muted)' }};
-                        box-shadow: {{ $isEverythingActive ? '0 1px 2px rgba(var(--ink-rgb), 0.06)' : 'none' }};
-                    "
-                    @if (! $isEverythingActive)
-                        onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
-                        onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
-                    @endif
+                <x-dashy.sidebar-link
+                    :href="route('tasks', ['team' => $activeTeam->id])"
+                    :active="$isEverythingActive"
                     data-test="workspace-sidebar-everything"
                 >
                     <span class="flex size-6 shrink-0 items-center justify-center rounded-md font-display text-sm"
                           style="background-color: var(--accent); color: var(--cocoa);">Σ</span>
                     <span class="min-w-0 flex-1 truncate">{{ __('All in team') }}</span>
                     <span class="text-xs" style="color: var(--ink-dim);">{{ $activeTeamCount }}</span>
-                </a>
+                </x-dashy.sidebar-link>
 
                 <div class="mt-1 flex flex-col gap-1">
                     @foreach ($teamProjects as $project)
@@ -64,27 +53,16 @@
                             $isActive = (int) $project->id === (int) $activeProjectId;
                             $count = (int) ($projectTaskCounts[$project->id] ?? 0);
                         @endphp
-                        <a
-                            href="{{ route('tasks.show', $project) }}"
-                            wire:navigate
-                            wire:key="ws-project-{{ $project->id }}"
-                            @if ($isActive) aria-current="page" @endif
-                            class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
-                            style="
-                                background-color: {{ $isActive ? 'var(--surface)' : 'transparent' }};
-                                color: {{ $isActive ? 'var(--ink)' : 'var(--ink-muted)' }};
-                                box-shadow: {{ $isActive ? '0 1px 2px rgba(var(--ink-rgb), 0.06)' : 'none' }};
-                            "
-                            @if (! $isActive)
-                                onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
-                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
-                            @endif
+                        <x-dashy.sidebar-link
+                            :href="route('tasks.show', $project)"
+                            :active="$isActive"
+                            wire-key="ws-project-{{ $project->id }}"
                             data-test="workspace-sidebar-project-{{ $project->id }}"
                         >
                             @include('livewire.tasks.partials.project-shape', ['project' => $project, 'size' => 'xs'])
                             <span class="min-w-0 flex-1 truncate">{{ $project->name }}</span>
                             <span class="text-xs" style="color: var(--ink-dim);">{{ $count }}</span>
-                        </a>
+                        </x-dashy.sidebar-link>
                     @endforeach
 
                     {{-- New-project trigger. Dispatches to the AppSidebar Livewire
@@ -109,27 +87,16 @@
         @else
             {{-- "Everything" view: "All tasks" entry + projects grouped by team --}}
             <div class="p-2">
-                <a
-                    href="{{ route('tasks') }}"
-                    wire:navigate
-                    @if ($isEverythingActive) aria-current="page" @endif
-                    class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
-                    style="
-                        background-color: {{ $isEverythingActive ? 'var(--surface)' : 'transparent' }};
-                        color: {{ $isEverythingActive ? 'var(--ink)' : 'var(--ink-muted)' }};
-                        box-shadow: {{ $isEverythingActive ? '0 1px 2px rgba(var(--ink-rgb), 0.06)' : 'none' }};
-                    "
-                    @if (! $isEverythingActive)
-                        onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
-                        onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
-                    @endif
+                <x-dashy.sidebar-link
+                    :href="route('tasks')"
+                    :active="$isEverythingActive"
                     data-test="workspace-sidebar-everything"
                 >
                     <span class="flex size-6 shrink-0 items-center justify-center rounded-md font-display text-sm"
                           style="background-color: var(--accent); color: var(--cocoa);">Σ</span>
                     <span class="min-w-0 flex-1 truncate">{{ __('All tasks (Everything)') }}</span>
                     <span class="text-xs" style="color: var(--ink-dim);">{{ $totalCount }}</span>
-                </a>
+                </x-dashy.sidebar-link>
             </div>
 
             @foreach ($teams as $team)
@@ -150,27 +117,16 @@
                                 $isActive = (int) $project->id === (int) $activeProjectId;
                                 $count = (int) ($projectTaskCounts[$project->id] ?? 0);
                             @endphp
-                            <a
-                                href="{{ route('tasks.show', $project) }}?from=everything"
-                                wire:navigate
-                                wire:key="ws-project-{{ $project->id }}"
-                                @if ($isActive) aria-current="page" @endif
-                                class="flex items-center gap-2 rounded-md px-2 py-2 text-sm transition"
-                                style="
-                                    background-color: {{ $isActive ? 'var(--surface)' : 'transparent' }};
-                                    color: {{ $isActive ? 'var(--ink)' : 'var(--ink-muted)' }};
-                                    box-shadow: {{ $isActive ? '0 1px 2px rgba(var(--ink-rgb), 0.06)' : 'none' }};
-                                "
-                                @if (! $isActive)
-                                    onmouseover="this.style.backgroundColor='var(--bg)'; this.style.color='var(--ink)';"
-                                    onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--ink-muted)';"
-                                @endif
+                            <x-dashy.sidebar-link
+                                :href="route('tasks.show', $project).'?from=everything'"
+                                :active="$isActive"
+                                wire-key="ws-project-{{ $project->id }}"
                                 data-test="workspace-sidebar-project-{{ $project->id }}"
                             >
                                 @include('livewire.tasks.partials.project-shape', ['project' => $project, 'size' => 'xs'])
                                 <span class="min-w-0 flex-1 truncate">{{ $project->name }}</span>
                                 <span class="text-xs" style="color: var(--ink-dim);">{{ $count }}</span>
-                            </a>
+                            </x-dashy.sidebar-link>
                         @endforeach
                     </div>
                 </div>

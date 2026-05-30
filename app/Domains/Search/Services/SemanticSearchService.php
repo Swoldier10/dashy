@@ -4,6 +4,7 @@ namespace App\Domains\Search\Services;
 
 use App\Domains\Search\Actions\FindEmbeddingsByScopeAction;
 use App\Domains\Search\Models\Embedding;
+use App\Domains\Teams\Services\ListTeamIdsForUserService;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -19,6 +20,7 @@ final class SemanticSearchService
     public function __construct(
         private EmbedTextService $embedText,
         private FindEmbeddingsByScopeAction $findByScope,
+        private ListTeamIdsForUserService $listTeamIds,
     ) {}
 
     /**
@@ -82,10 +84,10 @@ final class SemanticSearchService
      */
     private function teamIdsFor(User $actor, ?int $teamId): array
     {
-        $userTeamIds = $actor->teams()->pluck('teams.id')->all();
+        $userTeamIds = $this->listTeamIds->execute($actor);
 
         if ($teamId === null) {
-            return array_map('intval', $userTeamIds);
+            return $userTeamIds;
         }
 
         return in_array($teamId, $userTeamIds, true) ? [$teamId] : [];

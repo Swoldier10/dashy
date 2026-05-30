@@ -2,7 +2,7 @@
 
 namespace App\Domains\Tasks\Services;
 
-use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\AssertProjectStatusInProjectService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\MoveTaskToStatusAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
@@ -10,7 +10,6 @@ use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 
 final class UpdateTaskStatusService
 {
@@ -18,6 +17,7 @@ final class UpdateTaskStatusService
         private FindTaskAction $find,
         private MoveTaskToStatusAction $move,
         private NextTaskPositionAction $nextPosition,
+        private AssertProjectStatusInProjectService $assertStatusInProject,
     ) {}
 
     public function execute(User $actor, int $taskId, int $projectStatusId): Task
@@ -26,16 +26,7 @@ final class UpdateTaskStatusService
 
         Gate::forUser($actor)->authorize('update', $task);
 
-        $statusBelongs = ProjectStatus::query()
-            ->where('id', $projectStatusId)
-            ->where('project_id', $task->project_id)
-            ->exists();
-
-        if (! $statusBelongs) {
-            throw ValidationException::withMessages([
-                'project_status_id' => __('The selected status does not belong to this project.'),
-            ]);
-        }
+        $this->assertStatusInProject->execute($projectStatusId, $task->project_id);
 
         if ($task->project_status_id === $projectStatusId) {
             return $task;

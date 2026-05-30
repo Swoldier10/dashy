@@ -2,13 +2,15 @@
 
 namespace App\Domains\Tasks\Services;
 
-use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\FindProjectStatusService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\MoveTaskToStatusAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +27,7 @@ final class BulkMoveTasksService
         private FindTaskAction $find,
         private MoveTaskToStatusAction $move,
         private NextTaskPositionAction $nextPosition,
+        private FindProjectStatusService $findStatus,
     ) {}
 
     /**
@@ -41,8 +44,9 @@ final class BulkMoveTasksService
         }
 
         return DB::transaction(function () use ($actor, $taskIds, $targetStatusId): Collection {
-            $targetStatus = ProjectStatus::query()->find($targetStatusId);
-            if ($targetStatus === null) {
+            try {
+                $targetStatus = $this->findStatus->execute($actor, $targetStatusId);
+            } catch (ModelNotFoundException|AuthorizationException) {
                 throw ValidationException::withMessages([
                     'project_status_id' => __('The target status does not exist.'),
                 ]);

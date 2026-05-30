@@ -101,6 +101,10 @@
     --surface:      #ffffff;          /* cards, panels */
     --surface-rgb:  255, 255, 255;
     --surface-2:    #f0eee9;          /* hover / section bg */
+    --surface-3:    #e9e6df;          /* deeper section bg (pills, code blocks) */
+
+    /* Overlay scrim — semi-opaque charcoal for media over-buttons */
+    --overlay-scrim: rgba(var(--ink-rgb), 0.55);
 
     /* Ink (text) — charcoal on cream */
     --ink:          #1a1a1a;

@@ -14,24 +14,32 @@ use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Jobs\CompactHistoryJob;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Models\Message;
-use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
 use App\Domains\Codex\DTOs\ChatStreamEvent;
 use App\Domains\Codex\Exceptions\CodexNotConnectedException;
 use App\Domains\Codex\Services\CodexClient;
+use App\Domains\Codex\Services\FindCodexConnectionForUserService;
 use App\Models\User;
 use Generator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class SendMessageService
 {
+    /**
+     * Per-user cap on new chat messages per minute. Guards against a single
+     * user (or a script) fanning out unbounded LLM/embedding calls — which
+     * would blow up cost and trip the provider's rate limit for every tenant.
+     */
+    private const MAX_MESSAGES_PER_MINUTE = 30;
+
     public function __construct(
         private CreateMessageAction $createMessage,
         private CodexClient $codex,
-        private FindCodexConnectionForUserAction $findConnection,
+        private FindCodexConnectionForUserService $findConnection,
         private AiSystemPromptBuilder $promptBuilder,
         private AiToolRegistry $toolRegistry,
         private LlmInputBuilder $inputBuilder,
@@ -45,6 +53,8 @@ final class SendMessageService
      */
     public function saveUserMessage(Chat $chat, string $content, array $attachments = []): Message
     {
+        $this->enforceSendRateLimit((int) $chat->user_id);
+
         Validator::make([
             'content' => $content,
             'attachments' => $attachments,
@@ -72,6 +82,26 @@ final class SendMessageService
         $this->maybeDispatchCompaction($chat);
 
         return $message;
+    }
+
+    /**
+     * Throttle new messages per user. Uses the cache-backed rate limiter
+     * (Redis in production once cache moves off the database driver), so the
+     * counter is atomic and shared across web workers.
+     */
+    private function enforceSendRateLimit(int $userId): void
+    {
+        $key = 'chat-send:'.$userId;
+
+        if (RateLimiter::tooManyAttempts($key, self::MAX_MESSAGES_PER_MINUTE)) {
+            throw ValidationException::withMessages([
+                'content' => __('You\'re sending messages too quickly. Please wait :seconds seconds.', [
+                    'seconds' => RateLimiter::availableIn($key),
+                ]),
+            ]);
+        }
+
+        RateLimiter::hit($key, 60);
     }
 
     /**

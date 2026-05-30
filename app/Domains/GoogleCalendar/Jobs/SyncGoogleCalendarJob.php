@@ -3,7 +3,6 @@
 namespace App\Domains\GoogleCalendar\Jobs;
 
 use App\Domains\GoogleCalendar\Services\SyncGoogleCalendarService;
-use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,12 +23,7 @@ class SyncGoogleCalendarJob implements ShouldQueue
 
     public function handle(SyncGoogleCalendarService $sync): void
     {
-        $user = User::query()->find($this->userId);
-        if ($user === null) {
-            return;
-        }
-
-        $sync->execute($user);
+        $sync->execute($this->userId);
     }
 
     /**

@@ -6,7 +6,7 @@
     <div class="flex min-w-0 items-center gap-3">
         <span
             class="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
-            style="background-color: color-mix(in srgb, var(--state-success) 22%, white); color: var(--state-success-strong);"
+            style="background-color: color-mix(in srgb, var(--state-success) 22%, var(--surface)); color: var(--state-success-strong);"
         >
             {{ __('Calendar') }}
         </span>
@@ -62,7 +62,7 @@
                     class="inline-flex h-7 items-center rounded-full px-3 text-[13px] font-medium transition"
                     style="
                         background-color: {{ $isActive ? 'var(--cocoa)' : 'transparent' }};
-                        color: {{ $isActive ? '#fff' : 'var(--ink-muted)' }};
+                        color: {{ $isActive ? 'var(--surface)' : 'var(--ink-muted)' }};
                     "
                     @if (! $isActive)
                         onmouseover="this.style.color='var(--ink)';"

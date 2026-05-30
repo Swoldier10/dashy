@@ -2,12 +2,12 @@
 
 namespace App\Livewire\Chat\Concerns;
 
-use App\Domains\Chat\Actions\ListPendingToolCallsForTurnAction;
 use App\Domains\Chat\Ai\Services\AiToolCardPresenter;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Chat\Services\AnswerChoiceService;
 use App\Domains\Chat\Services\ConfirmToolCallService;
 use App\Domains\Chat\Services\DiscardToolCallService;
+use App\Domains\Chat\Services\ListPendingToolCallsForTurnService;
 use App\Domains\Chat\Services\SendMessageService;
 use App\Domains\Chat\Services\UpdateChatStopStateService;
 use Illuminate\Support\Facades\Auth;
@@ -162,7 +162,7 @@ trait HandlesToolCalls
             return;
         }
 
-        $stillPending = app(ListPendingToolCallsForTurnAction::class)
+        $stillPending = app(ListPendingToolCallsForTurnService::class)
             ->execute($chat, $parentId)
             ->contains(fn (Message $m) => is_array($m->tool_call) && ($m->tool_call['status'] ?? null) === 'pending');
 

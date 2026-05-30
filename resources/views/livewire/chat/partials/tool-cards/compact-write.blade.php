@@ -69,7 +69,7 @@
                     wire:click="confirmToolCall({{ $message->id }})"
                     wire:loading.attr="disabled"
                     class="inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-xs font-medium"
-                    style="background-color: {{ $applyColor }}; color: white;"
+                    style="background-color: {{ $applyColor }}; color: var(--surface);"
                     data-test="compact-apply"
                 >
                     {{ $applyLabel }}

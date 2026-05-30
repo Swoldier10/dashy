@@ -3,6 +3,7 @@
 namespace App\Domains\Chat\Ai\Tools;
 
 use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Models\Chat;
@@ -16,7 +17,7 @@ use RuntimeException;
  * resolves it by clicking an option (see AnswerChoiceService + ChatPanel
  * ::answerChoice). execute() is therefore a defensive trap, not a happy path.
  */
-final class AskUserChoiceTool implements AiTool
+final class AskUserChoiceTool implements AiTool, PresentsToolCard
 {
     private const MIN_OPTIONS = 2;
 
@@ -127,5 +128,38 @@ final class AskUserChoiceTool implements AiTool
         throw new RuntimeException(
             'ask_user_choice is resolved via AnswerChoiceService, not the confirm flow.'
         );
+    }
+
+    public function presentCard(array $toolCall, User $user): array
+    {
+        $args = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+
+        $options = array_values(array_filter(array_map(
+            static fn ($o): ?string => is_string($o) ? $o : null,
+            is_array($args['options'] ?? null) ? $args['options'] : [],
+        )));
+
+        $result = $toolCall['result'] ?? null;
+        $chosenIndex = null;
+        $chosenLabel = null;
+        if (is_array($result)) {
+            $idx = $result['choice_index'] ?? null;
+            if (is_int($idx) || (is_string($idx) && ctype_digit($idx))) {
+                $chosenIndex = (int) $idx;
+            }
+            if (is_string($result['choice_label'] ?? null)) {
+                $chosenLabel = $result['choice_label'];
+            }
+        }
+
+        return [
+            'name' => 'ask_user_choice',
+            'status' => (string) ($toolCall['status'] ?? 'pending'),
+            'question' => (string) ($args['question'] ?? ''),
+            'options' => $options,
+            'chosen_index' => $chosenIndex,
+            'chosen_label' => $chosenLabel,
+            'validation_errors' => (array) ($toolCall['validation_errors'] ?? []),
+        ];
     }
 }

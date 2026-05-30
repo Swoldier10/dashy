@@ -6,7 +6,7 @@ use App\Domains\Chat\Ai\Contracts\AiTool;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Models\Chat;
-use App\Domains\Tasks\Actions\FindTaskAction;
+use App\Domains\Tasks\Services\FindTaskService;
 use App\Domains\TimeTracking\Services\LogManualTimeService;
 use App\Models\User;
 use Throwable;
@@ -20,7 +20,7 @@ final class LogManualTimeTool implements AiTool
 {
     public function __construct(
         private LogManualTimeService $logTime,
-        private FindTaskAction $findTask,
+        private FindTaskService $findTask,
     ) {}
 
     public function name(): string
@@ -83,7 +83,7 @@ final class LogManualTimeTool implements AiTool
     public function execute(User $user, array $arguments): array
     {
         try {
-            $task = $this->findTask->execute((int) $arguments['task_id']);
+            $task = $this->findTask->execute($user, (int) $arguments['task_id']);
         } catch (Throwable) {
             return ['error' => 'Task not found.'];
         }

@@ -2,16 +2,14 @@
 
 namespace App\Domains\GoogleCalendar\Services;
 
-use App\Domains\Calendar\Models\Event;
 use App\Domains\GoogleCalendar\Actions\DeleteGoogleCalendarLinkAction;
 use App\Domains\GoogleCalendar\Actions\FindLinkForSyncableAction;
 use App\Domains\GoogleCalendar\Actions\ListDirtyEventsForUserAction;
 use App\Domains\GoogleCalendar\Actions\ListDirtyTasksForUserAction;
+use App\Domains\GoogleCalendar\Actions\ListOrphanedLinksAction;
 use App\Domains\GoogleCalendar\Actions\UpsertGoogleCalendarLinkAction;
 use App\Domains\GoogleCalendar\DTOs\SyncOutcome;
 use App\Domains\GoogleCalendar\Models\GoogleCalendarConnection;
-use App\Domains\GoogleCalendar\Models\GoogleCalendarLink;
-use App\Domains\Tasks\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -34,6 +32,7 @@ final class PushDirtyToGoogleService
         private FindLinkForSyncableAction $findLink,
         private UpsertGoogleCalendarLinkAction $upsertLink,
         private DeleteGoogleCalendarLinkAction $deleteLink,
+        private ListOrphanedLinksAction $listOrphanedLinks,
     ) {}
 
     public function execute(GoogleCalendarConnection $connection, SyncOutcome $outcome): void
@@ -99,7 +98,7 @@ final class PushDirtyToGoogleService
 
     private function pushOrphanDeletes(GoogleCalendarConnection $connection, SyncOutcome $outcome): void
     {
-        $orphans = $this->listOrphanedLinks($connection);
+        $orphans = $this->listOrphanedLinks->execute($connection);
 
         foreach ($orphans as $link) {
             $response = $this->api->deleteEvent($connection, $link->google_event_id);
@@ -118,29 +117,5 @@ final class PushDirtyToGoogleService
             ]);
             $outcome->errors++;
         }
-    }
-
-    /**
-     * @return Collection<int, GoogleCalendarLink>
-     */
-    private function listOrphanedLinks(GoogleCalendarConnection $connection): Collection
-    {
-        $eventOrphans = GoogleCalendarLink::query()
-            ->where('connection_id', $connection->id)
-            ->where('syncable_type', Event::class)
-            ->whereNotIn('syncable_id', function ($q) {
-                $q->select('id')->from('calendar_events');
-            })
-            ->get();
-
-        $taskOrphans = GoogleCalendarLink::query()
-            ->where('connection_id', $connection->id)
-            ->where('syncable_type', Task::class)
-            ->whereNotIn('syncable_id', function ($q) {
-                $q->select('id')->from('tasks');
-            })
-            ->get();
-
-        return $eventOrphans->concat($taskOrphans);
     }
 }

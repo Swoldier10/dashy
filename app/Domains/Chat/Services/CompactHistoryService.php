@@ -3,15 +3,16 @@
 namespace App\Domains\Chat\Services;
 
 use App\Domains\Chat\Actions\CreateMessageAction;
+use App\Domains\Chat\Actions\FindChatAction;
 use App\Domains\Chat\Actions\ListMessagesForChatAction;
 use App\Domains\Chat\Ai\Services\LlmInputBuilder;
 use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Models\Message;
-use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
 use App\Domains\Codex\DTOs\ChatStreamEvent;
 use App\Domains\Codex\Models\CodexConnection;
 use App\Domains\Codex\Services\CodexClient;
+use App\Domains\Codex\Services\FindCodexConnectionForUserService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -44,11 +45,12 @@ text.
 TXT;
 
     public function __construct(
-        private FindCodexConnectionForUserAction $findConnection,
+        private FindCodexConnectionForUserService $findConnection,
         private CodexClient $codex,
         private CreateMessageAction $createMessage,
         private LlmInputBuilder $inputBuilder,
         private ListMessagesForChatAction $listMessages,
+        private FindChatAction $findChat,
     ) {}
 
     /**
@@ -57,10 +59,18 @@ TXT;
      * message, or null when there isn't enough to compact.
      */
     public function execute(
-        Chat $chat,
+        Chat|int $chat,
         int $triggerThreshold = self::DEFAULT_TRIGGER_THRESHOLD,
         int $keepTail = self::DEFAULT_KEEP_TAIL,
     ): ?Message {
+        if (is_int($chat)) {
+            $found = $this->findChat->execute($chat);
+            if ($found === null) {
+                return null;
+            }
+            $chat = $found;
+        }
+
         $all = $this->listMessages->execute($chat);
         if ($all->count() < $triggerThreshold) {
             return null;

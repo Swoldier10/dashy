@@ -2,15 +2,18 @@
 
 namespace App\Domains\Projects\Models;
 
+use App\Domains\Projects\Observers\ProjectSearchObserver;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Teams\Models\Team;
 use Database\Factories\ProjectFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+#[ObservedBy([ProjectSearchObserver::class])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */

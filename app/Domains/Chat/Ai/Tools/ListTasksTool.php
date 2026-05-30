@@ -6,7 +6,7 @@ use App\Domains\Chat\Ai\Contracts\AiTool;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Models\Chat;
-use App\Domains\Projects\Actions\FindProjectAction;
+use App\Domains\Projects\Services\FindProjectService;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Services\ListTasksForProjectService;
 use App\Models\User;
@@ -20,7 +20,7 @@ final class ListTasksTool implements AiTool
 {
     public function __construct(
         private ListTasksForProjectService $listTasks,
-        private FindProjectAction $findProject,
+        private FindProjectService $findProject,
     ) {}
 
     public function name(): string
@@ -80,7 +80,7 @@ final class ListTasksTool implements AiTool
     public function execute(User $user, array $arguments): array
     {
         try {
-            $project = $this->findProject->execute((int) $arguments['project_id']);
+            $project = $this->findProject->execute($user, (int) $arguments['project_id']);
         } catch (Throwable) {
             return ['error' => 'Project not found.'];
         }

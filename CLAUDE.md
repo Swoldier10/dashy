@@ -96,6 +96,7 @@ Code is organized by business domain, not by Laravel artifact type.
 - New domain code lives under `app/Domains/<DomainName>/` with subfolders as needed: `Models/`, `Services/`, `Actions/`, `Events/`, `Listeners/`, `DTOs/`, `Enums/`, `Exceptions/`, `Policies/`.
 - A domain owns its data. Other domains may only call its **public services** — never reach into its actions, models, or internals.
 - Cross-domain orchestration happens in a coordinating service (often in a shared/coordinator domain), not by reaching across boundaries.
+- **Accepted exception — the sync coordinator (`GoogleCalendar`).** A one-way sync engine inherently joins *local rows* (Tasks/Calendar) against its own *link/sync-state* table to detect what's dirty or orphaned. Doing that comparison in one indexed SQL JOIN (in GoogleCalendar's Actions) is the correct, scale-preserving design — the alternatives either invert the coupling (Tasks/Calendar querying `google_calendar_links`) or replace the JOIN with loading every candidate row and diffing in PHP. GoogleCalendar is therefore the accepted owner of that read; it must still write only through its own Actions and never *mutate* another domain's rows except via that domain's public Services (which it does).
 - Cross-cutting concerns (logging, request lifecycle, auth scaffolding) stay outside `Domains/`. Exception: `App\Models\User` stays where Fortify expects it but is conceptually owned by the Auth domain.
 - Domain folders use PascalCase, singular when describing an aggregate (e.g., `Workspace`, `Billing`, `Auth`).
 
@@ -126,6 +127,7 @@ Strict three-layer pattern. Skipping a layer is a bug.
 **Notes & exceptions:**
 - Eloquent model *definitions* (relationships, casts, scopes, accessors, mutators) live on the model class itself — that's modeling, not data access. The rule applies to *invoking* persistence/query methods.
 - Policies are called from services. UI may also call `Gate::authorize()` for short-circuit checks, but the canonical authorization happens in the service.
+- **Authorization convention by ownership shape:** multi-actor / shared-ownership data (Tasks, Projects, Calendar, Teams, TimeTracking) authorizes with a **Policy + `Gate::authorize`** in the service. Single-owner data (Codex/GoogleCalendar connections, Preferences) authorizes implicitly by **resolving the record scoped to the acting user** (find-by-user, then mutate) — no Policy needed. When a currently single-owner domain gains a shared-team surface, switch it to the Policy pattern.
 - The shipped Livewire starter kit is grandfathered. This includes Fortify scaffolding (`app/Actions/Fortify/`, `app/Concerns/`), `app/Livewire/Actions/Logout.php`, the settings Volt components (`resources/views/pages/settings/⚡*.blade.php` and their layouts/partials), and any auth pages we have not yet redesigned (`forgot-password`, `reset-password`, `verify-email`, `confirm-password`, `two-factor-challenge`). New domain code we author follows all rules above. When we redesign or substantially modify a kit page, it must come into compliance at that point — it's no longer "kit code".
 
 ## 3. Reuse Before Writing

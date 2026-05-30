@@ -25,6 +25,11 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_URL" value=""/>
+        <!-- Keep the production SQLite concurrency pragmas (WAL/busy_timeout)
+             out of the test DB so test behavior is identical to before. -->
+        <env name="DB_BUSY_TIMEOUT" value="null"/>
+        <env name="DB_JOURNAL_MODE" value="null"/>
+        <env name="DB_SYNCHRONOUS" value="null"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

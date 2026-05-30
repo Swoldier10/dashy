@@ -2,18 +2,18 @@
 
 namespace App\Livewire\Chat;
 
-use App\Domains\Chat\Actions\FindChatForUserAction;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Services\CreateChatService;
+use App\Domains\Chat\Services\FindChatForUserService;
 use App\Domains\Chat\Services\SendMessageService;
 use App\Domains\Chat\Services\UpdateChatStopStateService;
-use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Services\ListProjectsForUserService;
 use App\Livewire\Chat\Concerns\HandlesAssistantStream;
 use App\Livewire\Chat\Concerns\HandlesToolCalls;
 use App\Livewire\Chat\Concerns\ManagesChatAttachments;
 use App\Livewire\Chat\Concerns\PresentsChatGreeting;
+use App\Livewire\Concerns\ResolvesCodexState;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +29,7 @@ class ChatPanel extends Component
     use HandlesToolCalls;
     use ManagesChatAttachments;
     use PresentsChatGreeting;
+    use ResolvesCodexState;
     use WithFileUploads;
 
     public ?int $activeChatId = null;
@@ -58,7 +59,7 @@ class ChatPanel extends Component
             return;
         }
 
-        $found = app(FindChatForUserAction::class)->execute(Auth::user(), $chat);
+        $found = app(FindChatForUserService::class)->execute(Auth::user(), $chat);
         if ($found !== null) {
             $this->activeChatId = $found->id;
         }
@@ -71,19 +72,7 @@ class ChatPanel extends Component
             return null;
         }
 
-        return app(FindChatForUserAction::class)->execute(Auth::user(), $this->activeChatId);
-    }
-
-    #[Computed]
-    public function isCodexConnected(): bool
-    {
-        return app(FindCodexConnectionForUserAction::class)->execute(Auth::user()) !== null;
-    }
-
-    #[Computed]
-    public function modelLabel(): string
-    {
-        return (string) config('services.codex.model');
+        return app(FindChatForUserService::class)->execute(Auth::user(), $this->activeChatId);
     }
 
     /**

@@ -6,7 +6,7 @@ use App\Domains\Preferences\Actions\UpsertTeamPreferenceAction;
 use App\Domains\Preferences\Actions\UpsertUserPreferenceAction;
 use App\Domains\Preferences\Models\TeamPreference;
 use App\Domains\Preferences\Models\UserPreference;
-use App\Domains\Teams\Actions\FindTeamForUserAction;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +26,7 @@ final class RecordMemoryService
     public function __construct(
         private UpsertUserPreferenceAction $upsertUser,
         private UpsertTeamPreferenceAction $upsertTeam,
-        private FindTeamForUserAction $findTeamForUser,
+        private FindTeamForUserService $findTeamForUser,
     ) {}
 
     /**

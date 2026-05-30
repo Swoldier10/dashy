@@ -1,3 +1,0 @@
-<svg style="color: var(--ink-dim);" class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
-  <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
-</svg><?php /**PATH /var/www/html/storage/framework/views/28f8f4709a962ef92687d3d1ce010537.blade.php ENDPATH**/ ?>

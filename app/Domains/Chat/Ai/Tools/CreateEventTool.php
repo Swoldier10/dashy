@@ -6,6 +6,7 @@ use App\Domains\Calendar\Enums\EventColor;
 use App\Domains\Calendar\Enums\RecurrenceFreq;
 use App\Domains\Calendar\Services\CreateEventService;
 use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Models\Chat;
@@ -18,7 +19,7 @@ use Throwable;
  * Distinct from create_task: events are time-bound (start + end time of day),
  * tasks are deadline-bound. See system prompt for the discriminator.
  */
-final class CreateEventTool implements AiTool
+final class CreateEventTool implements AiTool, PresentsToolCard
 {
     public function __construct(
         private CreateEventService $createEvent,
@@ -180,5 +181,27 @@ final class CreateEventTool implements AiTool
     private function parseDate(mixed $value): ?CarbonImmutable
     {
         return $this->parseDateTime($value)?->startOfDay();
+    }
+
+    public function presentCard(array $toolCall, User $user): array
+    {
+        $args = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+
+        return [
+            'name' => 'create_event',
+            'status' => (string) ($toolCall['status'] ?? 'pending'),
+            'arguments' => $args,
+            'available_colors' => array_map(fn (EventColor $c) => [
+                'value' => $c->value,
+                'label' => $c->label(),
+                'var' => $c->colorVar(),
+            ], EventColor::cases()),
+            'available_recurrence_freqs' => array_map(fn (RecurrenceFreq $r) => [
+                'value' => $r->value,
+                'label' => $r->label(),
+            ], RecurrenceFreq::cases()),
+            'validation_errors' => (array) ($toolCall['validation_errors'] ?? []),
+            'result' => is_array($toolCall['result'] ?? null) ? $toolCall['result'] : [],
+        ];
     }
 }

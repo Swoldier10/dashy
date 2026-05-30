@@ -4,8 +4,8 @@ namespace App\Domains\Auth\Services;
 
 use App\Concerns\PasswordValidationRules;
 use App\Domains\Auth\Actions\DeleteUserAction;
-use App\Domains\Teams\Actions\DeleteOrphanedTeamsForUserAction;
-use App\Domains\Teams\Enums\TeamRole;
+use App\Domains\Teams\Services\DeleteOrphanedTeamsForUserService;
+use App\Domains\Teams\Services\ListSoleOwnedSharedTeamsForUserService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -17,7 +17,8 @@ final class DeleteAccountService
 
     public function __construct(
         private DeleteUserAction $deleteUser,
-        private DeleteOrphanedTeamsForUserAction $deleteOrphanedTeams,
+        private DeleteOrphanedTeamsForUserService $deleteOrphanedTeams,
+        private ListSoleOwnedSharedTeamsForUserService $listSoleOwnedSharedTeams,
     ) {}
 
     /**
@@ -59,22 +60,7 @@ final class DeleteAccountService
 
     private function guardAgainstSoleOwnershipOfSharedTeams(User $user): void
     {
-        $blockingTeams = $user->teams()
-            ->wherePivot('role', TeamRole::Owner->value)
-            ->withCount('members')
-            ->get()
-            ->filter(function ($team) use ($user) {
-                if ($team->members_count <= 1) {
-                    return false;
-                }
-
-                $ownerIds = $team->members()
-                    ->wherePivot('role', TeamRole::Owner->value)
-                    ->pluck('users.id')
-                    ->all();
-
-                return count($ownerIds) === 1 && (int) $ownerIds[0] === $user->id;
-            });
+        $blockingTeams = $this->listSoleOwnedSharedTeams->execute($user);
 
         if ($blockingTeams->isNotEmpty()) {
             throw ValidationException::withMessages([

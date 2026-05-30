@@ -14,6 +14,7 @@ final class FindUserByEmailService
 {
     public function __construct(
         private FindUserByEmailAction $findByEmail,
+        private UserSharesTeamWithService $sharesTeamWith,
     ) {}
 
     public function execute(User $actor, string $email): ?User
@@ -32,11 +33,6 @@ final class FindUserByEmailService
             return $target;
         }
 
-        $sharesTeam = User::query()
-            ->whereKey($target->id)
-            ->whereHas('teams', fn ($q) => $q->whereHas('members', fn ($m) => $m->whereKey($actor->id)))
-            ->exists();
-
-        return $sharesTeam ? $target : null;
+        return $this->sharesTeamWith->execute($target, $actor) ? $target : null;
     }
 }

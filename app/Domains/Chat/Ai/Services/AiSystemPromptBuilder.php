@@ -2,7 +2,10 @@
 
 namespace App\Domains\Chat\Ai\Services;
 
+use App\Domains\Preferences\Services\ListMemoriesService;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 final class AiSystemPromptBuilder
 {
@@ -207,15 +210,14 @@ TXT;
 
     public function __construct(
         private AiContextService $context,
-        private \App\Domains\Preferences\Actions\ListUserPreferencesAction $listUserPrefs,
-        private \App\Domains\Preferences\Actions\ListTeamPreferencesAction $listTeamPrefs,
+        private ListMemoriesService $listMemories,
     ) {}
 
     /**
      * @param  array{type: string, id?: int, name?: string}|null  $screen
-     *         optional viewport hint when the chat was opened from a specific
-     *         page (task / project / team). The assistant should treat this
-     *         as the current focus when the user says "this task" / "here".
+     *                                                                     optional viewport hint when the chat was opened from a specific
+     *                                                                     page (task / project / team). The assistant should treat this
+     *                                                                     as the current focus when the user says "this task" / "here".
      */
     public function build(User $user, ?array $screen = null): string
     {
@@ -235,8 +237,8 @@ TXT;
             $focus = json_encode($screen, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             $body .= "\n\nFOCUS:\n".$focus
                 ."\nThe user opened this chat from the surface above. When they say "
-                ."\"this task\" / \"this project\" / \"here\" / \"that\" without a name, "
-                ."resolve it to the FOCUS object before calling any tool.";
+                .'"this task" / "this project" / "here" / "that" without a name, '
+                .'resolve it to the FOCUS object before calling any tool.';
         }
 
         return $body;
@@ -254,7 +256,7 @@ TXT;
     {
         $blocks = [];
 
-        $userMemories = $this->listUserPrefs->execute($user->id, 'memory.');
+        $userMemories = $this->listMemories->execute($user, 'user');
         if ($userMemories->isNotEmpty()) {
             $lines = $userMemories->map(fn ($p) => '- '.(is_array($p->value) ? ($p->value['fact'] ?? '') : ''))
                 ->filter(fn ($l) => $l !== '- ')
@@ -271,7 +273,14 @@ TXT;
             $teamId = (int) $screen['team_id'];
         }
         if ($teamId !== null) {
-            $teamMemories = $this->listTeamPrefs->execute($teamId, 'memory.');
+            // The focus team should belong to the user; if for any reason it
+            // isn't accessible, skip team conventions rather than break the
+            // prompt. ListMemoriesService enforces the membership check.
+            try {
+                $teamMemories = $this->listMemories->execute($user, 'team', $teamId);
+            } catch (ModelNotFoundException|ValidationException) {
+                $teamMemories = collect();
+            }
             if ($teamMemories->isNotEmpty()) {
                 $lines = $teamMemories->map(fn ($p) => '- '.(is_array($p->value) ? ($p->value['fact'] ?? '') : ''))
                     ->filter(fn ($l) => $l !== '- ')

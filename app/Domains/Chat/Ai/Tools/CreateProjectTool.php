@@ -3,21 +3,21 @@
 namespace App\Domains\Chat\Ai\Tools;
 
 use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
-use App\Domains\Chat\Enums\MessageRole;
 use App\Domains\Chat\Models\Chat;
-use App\Domains\Chat\Models\Message;
-use App\Domains\Projects\Enums\ProjectStatusCategory;
+use App\Domains\Chat\Services\FindLatestUserMessageImagesService;
 use App\Domains\Projects\Services\CreateProjectService;
-use App\Domains\Teams\Actions\FindTeamForUserAction;
 use App\Domains\Teams\Models\Team;
+use App\Domains\Teams\Services\FindTeamForUserService;
+use App\Domains\Teams\Services\ListTeamsForUserService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-final class CreateProjectTool implements AiTool
+final class CreateProjectTool implements AiTool, PresentsToolCard
 {
     /**
      * Sensible defaults seeded for chat-created projects so they are immediately
@@ -33,8 +33,10 @@ final class CreateProjectTool implements AiTool
     ];
 
     public function __construct(
-        private FindTeamForUserAction $findTeamForUser,
+        private FindTeamForUserService $findTeamForUser,
         private CreateProjectService $createProject,
+        private FindLatestUserMessageImagesService $latestImages,
+        private ListTeamsForUserService $listTeamsForUser,
     ) {}
 
     public function name(): string
@@ -189,37 +191,9 @@ final class CreateProjectTool implements AiTool
             return null;
         }
 
-        // reorder() drops the default ascending orderBy('id') on the messages
-        // relation; without it, ORDER BY id ASC wins and we get the oldest
-        // user message instead of the latest.
-        $latest = $chat->messages()
-            ->where('role', MessageRole::User->value)
-            ->reorder('id', 'desc')
-            ->first(['attachments']);
-
-        if (! $latest instanceof Message) {
-            return null;
-        }
-
-        foreach ((array) ($latest->attachments ?? []) as $att) {
-            if (! is_array($att) || ($att['type'] ?? null) !== 'image') {
-                continue;
-            }
-            $path = $att['path'] ?? null;
-            $url = $att['url'] ?? null;
-            if (! is_string($path) || ! is_string($url)) {
-                continue;
-            }
-
-            return [
-                'path' => $path,
-                'url' => $url,
-                'mime' => is_string($att['mime'] ?? null) ? $att['mime'] : null,
-                'name' => is_string($att['name'] ?? null) ? $att['name'] : null,
-            ];
-        }
-
-        return null;
+        // The first image attached to the latest user message becomes the logo.
+        // The DB read lives in a Chat-domain service (no Eloquent in the tool).
+        return $this->latestImages->execute($chat)[0] ?? null;
     }
 
     /**
@@ -261,5 +235,63 @@ final class CreateProjectTool implements AiTool
     public static function defaultStatuses(): array
     {
         return self::DEFAULT_STATUSES;
+    }
+
+    public function presentCard(array $toolCall, User $user): array
+    {
+        $args = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+
+        $view = [
+            'name' => 'create_project',
+            'status' => (string) ($toolCall['status'] ?? 'pending'),
+            'project_name' => (string) ($args['name'] ?? ''),
+            'description' => (string) ($args['description'] ?? ''),
+            'team' => null,
+            'team_id' => $this->intOrNull($args['team_id'] ?? null),
+            'logo' => null,
+            'default_statuses' => array_map(
+                static fn (array $s): string => $s['name'],
+                self::defaultStatuses(),
+            ),
+            'validation_errors' => (array) ($toolCall['validation_errors'] ?? []),
+            'created_project_id' => null,
+            'available_teams' => $this->listTeamsForUser
+                ->execute($user)
+                ->map(fn (Team $t) => ['id' => $t->id, 'name' => $t->name])
+                ->values()
+                ->all(),
+        ];
+
+        $teamId = $this->intOrNull($args['team_id'] ?? null);
+        if ($teamId !== null) {
+            $team = $this->findTeamForUser->execute($user, $teamId);
+            if ($team !== null) {
+                $view['team'] = ['id' => $team->id, 'name' => $team->name];
+            }
+        }
+
+        $logo = $args['logo_attachment'] ?? null;
+        if (is_array($logo) && is_string($logo['url'] ?? null) && $logo['url'] !== '') {
+            $view['logo'] = [
+                'url' => $logo['url'],
+                'name' => is_string($logo['name'] ?? null) ? $logo['name'] : null,
+            ];
+        }
+
+        $result = $toolCall['result'] ?? null;
+        if (is_array($result) && isset($result['project_id'])) {
+            $view['created_project_id'] = (int) $result['project_id'];
+        }
+
+        return $view;
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return is_string($value) && ctype_digit($value) ? (int) $value : null;
     }
 }

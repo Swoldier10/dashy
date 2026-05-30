@@ -5,6 +5,7 @@ namespace App\Domains\Tasks\Services;
 use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -15,6 +16,7 @@ final class AssignTaskService
     public function __construct(
         private FindTaskAction $find,
         private AddTaskAssigneeAction $add,
+        private ListTeamMemberIdsService $listTeamMemberIds,
     ) {}
 
     public function execute(User $actor, int $taskId, int $userId): Task
@@ -23,9 +25,9 @@ final class AssignTaskService
 
         Gate::forUser($actor)->authorize('update', $task);
 
-        $isMember = $task->project->team->members()->whereKey($userId)->exists();
+        $memberIds = $this->listTeamMemberIds->execute($task->project->team);
 
-        if (! $isMember) {
+        if (! in_array($userId, $memberIds, true)) {
             throw ValidationException::withMessages([
                 'user_id' => __('The selected user is not a member of this team.'),
             ]);

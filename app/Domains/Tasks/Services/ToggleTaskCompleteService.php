@@ -2,12 +2,13 @@
 
 namespace App\Domains\Tasks\Services;
 
-use App\Domains\Projects\Actions\ListProjectStatusesForProjectAction;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
 use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\ListProjectStatusesForProjectService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -15,7 +16,7 @@ final class ToggleTaskCompleteService
 {
     public function __construct(
         private FindTaskAction $find,
-        private ListProjectStatusesForProjectAction $listStatuses,
+        private ListProjectStatusesForProjectService $listStatuses,
         private UpdateTaskStatusService $updateStatus,
     ) {}
 
@@ -25,7 +26,7 @@ final class ToggleTaskCompleteService
 
         Gate::forUser($actor)->authorize('update', $task);
 
-        $statuses = $this->listStatuses->execute($task->project);
+        $statuses = $this->listStatuses->execute($actor, $task->project);
 
         $current = $task->status;
         $isCurrentlyDone = $current
@@ -53,7 +54,7 @@ final class ToggleTaskCompleteService
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Collection<int, ProjectStatus>  $statuses
+     * @param  Collection<int, ProjectStatus>  $statuses
      * @param  list<ProjectStatusCategory>  $categories
      */
     private function firstInCategories($statuses, array $categories): ?ProjectStatus

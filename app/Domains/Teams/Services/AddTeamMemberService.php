@@ -2,8 +2,9 @@
 
 namespace App\Domains\Teams\Services;
 
-use App\Domains\Auth\Actions\FindUserByEmailAction;
+use App\Domains\Auth\Services\LookupUserByEmailService;
 use App\Domains\Teams\Actions\AttachTeamMemberAction;
+use App\Domains\Teams\Actions\IsTeamMemberAction;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
 use App\Models\User;
@@ -16,8 +17,9 @@ use Illuminate\Validation\ValidationException;
 final class AddTeamMemberService
 {
     public function __construct(
-        private FindUserByEmailAction $findUserByEmail,
+        private LookupUserByEmailService $findUserByEmail,
         private AttachTeamMemberAction $attachMember,
+        private IsTeamMemberAction $isMember,
     ) {}
 
     /**
@@ -46,7 +48,7 @@ final class AddTeamMemberService
             ]);
         }
 
-        if ($team->members()->whereKey($target->id)->exists()) {
+        if ($this->isMember->execute($team, (int) $target->id)) {
             throw ValidationException::withMessages([
                 'email' => __('That user is already a member.'),
             ]);

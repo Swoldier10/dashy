@@ -3,6 +3,7 @@
 namespace App\Domains\Chat\Ai\Tools;
 
 use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
 use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
 use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
 use App\Domains\Chat\Models\Chat;
@@ -17,7 +18,7 @@ use App\Models\User;
  * loop) and a result body of {"acknowledged": true} so subsequent LLM turns
  * see that the plan was rendered.
  */
-final class PlanTool implements AiTool
+final class PlanTool implements AiTool, PresentsToolCard
 {
     private const MIN_STEPS = 1;
 
@@ -105,5 +106,25 @@ final class PlanTool implements AiTool
     public function execute(User $user, array $arguments): array
     {
         return ['acknowledged' => true, 'steps' => $arguments['steps'] ?? []];
+    }
+
+    public function presentCard(array $toolCall, User $user): array
+    {
+        $args = is_array($toolCall['arguments'] ?? null) ? $toolCall['arguments'] : [];
+        $result = is_array($toolCall['result'] ?? null) ? $toolCall['result'] : [];
+
+        // Steps may live under result.steps (post-execution) or arguments.steps
+        // (failed validation). Prefer result for fidelity.
+        $steps = is_array($result['steps'] ?? null)
+            ? array_values(array_filter(array_map('strval', $result['steps'])))
+            : array_values(array_filter(array_map('strval', (array) ($args['steps'] ?? []))));
+
+        return [
+            'name' => 'plan',
+            'status' => (string) ($toolCall['status'] ?? 'executed'),
+            'mode' => 'structural_auto',
+            'steps' => $steps,
+            'validation_errors' => (array) ($toolCall['validation_errors'] ?? []),
+        ];
     }
 }

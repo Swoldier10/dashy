@@ -3,17 +3,19 @@
 namespace App\Domains\Tasks\Services;
 
 use App\Domains\Projects\Models\Project;
-use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\AssertProjectStatusInProjectService;
 use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\CreateTaskAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class CreateTaskService
 {
@@ -21,6 +23,8 @@ final class CreateTaskService
         private CreateTaskAction $create,
         private NextTaskPositionAction $nextPosition,
         private AddTaskAssigneeAction $addAssignee,
+        private AssertProjectStatusInProjectService $assertStatusInProject,
+        private ListTeamMemberIdsService $listTeamMemberIds,
     ) {}
 
     /**
@@ -47,16 +51,7 @@ final class CreateTaskService
         ])->validate();
 
         $statusId = (int) $validated['project_status_id'];
-        $statusBelongs = ProjectStatus::query()
-            ->where('id', $statusId)
-            ->where('project_id', $project->id)
-            ->exists();
-
-        if (! $statusBelongs) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'project_status_id' => __('The selected status does not belong to this project.'),
-            ]);
-        }
+        $this->assertStatusInProject->execute($statusId, $project->id);
 
         $assigneeIds = array_values(array_unique(array_map(
             'intval',
@@ -64,10 +59,10 @@ final class CreateTaskService
         )));
 
         if ($assigneeIds !== []) {
-            $memberIds = $project->team->members()->pluck('users.id')->all();
+            $memberIds = $this->listTeamMemberIds->execute($project->team);
             $invalid = array_diff($assigneeIds, $memberIds);
             if ($invalid !== []) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'assignee_user_ids' => __('One or more assignees are not members of this project\'s team.'),
                 ]);
             }

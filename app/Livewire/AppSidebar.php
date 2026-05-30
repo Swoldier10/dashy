@@ -4,11 +4,9 @@ namespace App\Livewire;
 
 use App\Domains\Calendar\DTOs\AgendaRow;
 use App\Domains\Calendar\Services\ListTodayAgendaService;
-use App\Domains\Chat\Actions\ListUserChatsAction;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Services\DeleteChatService;
-use App\Domains\Codex\Actions\FindCodexConnectionForUserAction;
-use App\Domains\Projects\Actions\ListProjectStatusesForProjectAction;
+use App\Domains\Chat\Services\ListUserChatsService;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Services\CreateProjectService;
@@ -16,16 +14,21 @@ use App\Domains\Projects\Services\CreateProjectStatusService;
 use App\Domains\Projects\Services\DeleteProjectService;
 use App\Domains\Projects\Services\DeleteProjectStatusService;
 use App\Domains\Projects\Services\ListProjectsForUserService;
+use App\Domains\Projects\Services\ListProjectStatusesForProjectService;
 use App\Domains\Projects\Services\RenameProjectStatusService;
 use App\Domains\Projects\Services\ReorderProjectStatusesService;
 use App\Domains\Projects\Services\UpdateProjectService;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Domains\Teams\Services\ListTeamsForUserService;
+use App\Livewire\Concerns\ResolvesCodexState;
 use App\Support\Concerns\DispatchesDashyUi;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -34,6 +37,7 @@ use Livewire\WithFileUploads;
 class AppSidebar extends Component
 {
     use DispatchesDashyUi;
+    use ResolvesCodexState;
     use WithFileUploads;
 
     public ?int $confirmDeleteChatId = null;
@@ -112,7 +116,7 @@ class AppSidebar extends Component
     #[Computed]
     public function chats(): Collection
     {
-        return app(ListUserChatsAction::class)->execute(Auth::user());
+        return app(ListUserChatsService::class)->execute(Auth::user());
     }
 
     /**
@@ -173,13 +177,18 @@ class AppSidebar extends Component
         $this->resetCreateProjectForm();
     }
 
-    public function createProject(CreateProjectService $service): void
+    public function createProject(CreateProjectService $service, FindTeamForUserService $teams): void
     {
         if ($this->createProjectTeamId === null) {
             return;
         }
 
-        $team = Auth::user()->teams()->findOrFail($this->createProjectTeamId);
+        // Resolve + authorize the target team through the Teams domain rather
+        // than querying the membership relation from the component (UI layer).
+        $team = $teams->execute(Auth::user(), $this->createProjectTeamId);
+        if ($team === null) {
+            throw new ModelNotFoundException;
+        }
 
         $service->execute(
             Auth::user(),
@@ -299,7 +308,7 @@ class AppSidebar extends Component
     }
 
     /**
-     * @return array<int, Collection<int, \App\Domains\Projects\Models\Project>>
+     * @return array<int, Collection<int, Project>>
      */
     #[Computed]
     public function projectsByTeamId(): array
@@ -355,7 +364,7 @@ class AppSidebar extends Component
         }
 
         $this->bufferedStatuses[] = [
-            'cid' => (string) \Illuminate\Support\Str::random(8),
+            'cid' => (string) Str::random(8),
             'category' => $category,
             'name' => $name,
         ];
@@ -491,8 +500,8 @@ class AppSidebar extends Component
             return [];
         }
 
-        return app(ListProjectStatusesForProjectAction::class)
-            ->execute($project)
+        return app(ListProjectStatusesForProjectService::class)
+            ->execute(Auth::user(), $project)
             ->groupBy(fn ($status) => $status->category->value)
             ->all();
     }
@@ -522,18 +531,6 @@ class AppSidebar extends Component
     public function refreshProjects(): void
     {
         // Empty body — listener triggers re-render so projectsByTeamId re-evaluates.
-    }
-
-    #[Computed]
-    public function isCodexConnected(): bool
-    {
-        return app(FindCodexConnectionForUserAction::class)->execute(Auth::user()) !== null;
-    }
-
-    #[Computed]
-    public function modelLabel(): string
-    {
-        return (string) config('services.codex.model');
     }
 
     public function startNewChat(): void

@@ -2,7 +2,6 @@
 
 namespace App\Domains\Chat\Jobs;
 
-use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Services\CompactHistoryService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,11 +29,6 @@ class CompactHistoryJob implements ShouldQueue
 
     public function handle(CompactHistoryService $compact): void
     {
-        $chat = Chat::find($this->chatId);
-        if ($chat === null) {
-            return;
-        }
-
-        $compact->execute($chat);
+        $compact->execute($this->chatId);
     }
 }

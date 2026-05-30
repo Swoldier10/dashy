@@ -3,6 +3,8 @@
 namespace App\Livewire\Tasks;
 
 use App\Domains\Projects\Enums\ProjectStatusCategory;
+use App\Domains\Projects\Models\ProjectStatus;
+use App\Domains\Projects\Services\ListProjectStatusesForProjectService;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Services\AssignTaskService;
@@ -13,8 +15,11 @@ use App\Domains\Tasks\Services\UpdateTaskDatesService;
 use App\Domains\Tasks\Services\UpdateTaskPriorityService;
 use App\Domains\Tasks\Services\UpdateTaskService;
 use App\Domains\Tasks\Services\UpdateTaskStatusService;
+use App\Domains\Teams\Services\ListTeamMembersService;
+use App\Models\User;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -37,7 +42,6 @@ class TaskDetailDrawer extends Component
             $this->open($taskId);
         }
     }
-
 
     public string $detailName = '';
 
@@ -86,12 +90,12 @@ class TaskDetailDrawer extends Component
 
         try {
             return app(FindTaskService::class)->execute(Auth::user(), $this->taskId);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             return null;
         }
     }
 
-    /** @return Collection<int, \App\Domains\Projects\Models\ProjectStatus> */
+    /** @return Collection<int, ProjectStatus> */
     #[Computed]
     public function statuses(): Collection
     {
@@ -105,12 +109,13 @@ class TaskDetailDrawer extends Component
         // tasks page's statuses() computed.
         $rank = array_flip(array_column(ProjectStatusCategory::cases(), 'value'));
 
-        return $task->project->statuses
+        return app(ListProjectStatusesForProjectService::class)
+            ->execute(Auth::user(), $task->project)
             ->sortByDesc(fn ($s) => $rank[$s->category->value] ?? -1)
             ->values();
     }
 
-    /** @return Collection<int, \App\Models\User> */
+    /** @return Collection<int, User> */
     #[Computed]
     public function teamMembers(): Collection
     {
@@ -119,7 +124,8 @@ class TaskDetailDrawer extends Component
             return new Collection;
         }
 
-        return $task->project->team->members()->get();
+        return app(ListTeamMembersService::class)
+            ->execute(Auth::user(), (int) $task->project->team_id);
     }
 
     public function saveTaskDetail(UpdateTaskService $svc): void

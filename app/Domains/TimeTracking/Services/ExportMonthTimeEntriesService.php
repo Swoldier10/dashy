@@ -2,28 +2,25 @@
 
 namespace App\Domains\TimeTracking\Services;
 
-use App\Domains\Projects\Actions\FindProjectAction;
-use App\Domains\Tasks\Models\Task;
+use App\Domains\Projects\Services\FindProjectService;
 use App\Domains\TimeTracking\Actions\ListTimeEntriesForMonthAction;
 use App\Domains\TimeTracking\DTOs\MonthlyTimeEntriesExport;
 use App\Domains\TimeTracking\Support\MonthlyTimeEntriesWorkbook;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class ExportMonthTimeEntriesService
 {
     public function __construct(
         private readonly ListTimeEntriesForMonthAction $list,
-        private readonly FindProjectAction $find,
+        private readonly FindProjectService $find,
     ) {}
 
     public function execute(User $actor, int $projectId, CarbonImmutable $monthAnchor, ?int $userId): MonthlyTimeEntriesExport
     {
-        $project = $this->find->execute($projectId);
-        Gate::forUser($actor)->authorize('viewAny', [Task::class, $project]);
+        $project = $this->find->execute($actor, $projectId);
 
         $start = $monthAnchor->startOfMonth();
         $end = $monthAnchor->endOfMonth()->endOfDay();

@@ -2,12 +2,12 @@
 
 namespace App\Livewire\TimeTracking;
 
-use App\Domains\TimeTracking\Actions\FindActiveTimerForUserAction;
 use App\Domains\TimeTracking\Models\TimeEntry;
+use App\Domains\TimeTracking\Services\FindActiveTimerForUserService;
 use App\Domains\TimeTracking\Services\StopTimerService;
+use App\Livewire\Concerns\StopsActiveTimer;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -15,6 +15,7 @@ use Livewire\Component;
 class RunningTimerPill extends Component
 {
     use DispatchesDashyUi;
+    use StopsActiveTimer;
 
     #[Computed]
     public function activeEntry(): ?TimeEntry
@@ -23,18 +24,14 @@ class RunningTimerPill extends Component
             return null;
         }
 
-        return app(FindActiveTimerForUserAction::class)
-            ->execute(Auth::user())
-            ?->load('task.project');
+        // The service returns the entry with task.project already eager-loaded
+        // (see FindActiveTimerForUserAction) so the component issues no query.
+        return app(FindActiveTimerForUserService::class)->execute(Auth::user());
     }
 
     public function stop(StopTimerService $service): void
     {
-        try {
-            $service->execute(Auth::user());
-        } catch (ValidationException $e) {
-            $this->toast('danger', collect($e->errors())->flatten()->first());
-
+        if (! $this->stopActiveTimer($service)) {
             return;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Domains\GoogleCalendar\Services;
 
+use App\Domains\Auth\Services\FindUserByIdService;
 use App\Domains\GoogleCalendar\Actions\FindGoogleCalendarConnectionForUserAction;
 use App\Domains\GoogleCalendar\Actions\UpdateGoogleCalendarConnectionAction;
 use App\Domains\GoogleCalendar\DTOs\SyncOutcome;
@@ -30,10 +31,19 @@ final class SyncGoogleCalendarService
         private PullEventsFromGoogleService $pull,
         private PushDirtyToGoogleService $push,
         private UpdateGoogleCalendarConnectionAction $updateConnection,
+        private FindUserByIdService $findUser,
     ) {}
 
-    public function execute(User $user, bool $manual = false): SyncOutcome
+    public function execute(User|int $user, bool $manual = false): SyncOutcome
     {
+        if (is_int($user)) {
+            $found = $this->findUser->execute($user);
+            if ($found === null) {
+                return new SyncOutcome;
+            }
+            $user = $found;
+        }
+
         $connection = $this->findConnection->execute($user);
         if ($connection === null) {
             return new SyncOutcome;

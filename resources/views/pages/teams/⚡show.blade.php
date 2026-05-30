@@ -1,12 +1,13 @@
 <?php
 
-use App\Domains\Teams\Actions\FindTeamForUserAction;
 use App\Domains\Teams\Enums\Currency;
 use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Exceptions\InvitationResendThrottledException;
 use App\Domains\Teams\Exceptions\TeamInvitationException;
 use App\Domains\Teams\Models\Team;
 use App\Domains\Teams\Services\DeleteTeamService;
+use App\Domains\Teams\Services\FindTeamForUserService;
+use App\Domains\Teams\Services\FindTeamMemberService;
 use App\Domains\Teams\Services\InviteTeamMemberService;
 use App\Domains\Teams\Services\ListPendingInvitationsForTeamService;
 use App\Domains\Teams\Services\RemoveTeamMemberService;
@@ -51,7 +52,7 @@ new #[Title('Team')] class extends Component
 
     public function mount(int $team): void
     {
-        $resolved = app(FindTeamForUserAction::class)->execute(Auth::user(), $team);
+        $resolved = app(FindTeamForUserService::class)->execute(Auth::user(), $team);
         if ($resolved === null) {
             abort(404);
         }
@@ -65,7 +66,7 @@ new #[Title('Team')] class extends Component
     #[Computed]
     public function team(): Team
     {
-        $team = app(FindTeamForUserAction::class)->execute(Auth::user(), $this->teamId);
+        $team = app(FindTeamForUserService::class)->execute(Auth::user(), $this->teamId);
         if ($team === null) {
             abort(404);
         }
@@ -219,7 +220,7 @@ new #[Title('Team')] class extends Component
             return;
         }
 
-        $target = User::find($this->confirmRemoveMemberId);
+        $target = app(FindTeamMemberService::class)->execute(Auth::user(), $this->team, $this->confirmRemoveMemberId);
         if ($target === null) {
             $this->confirmRemoveMemberId = null;
             $this->closeModal('confirm-remove-member');

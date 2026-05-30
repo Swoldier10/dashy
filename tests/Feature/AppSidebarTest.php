@@ -11,6 +11,7 @@ use App\Domains\Teams\Enums\TeamRole;
 use App\Domains\Teams\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -198,6 +199,9 @@ class AppSidebarTest extends TestCase
 
     public function test_tasks_route_lists_users_teams_in_sidebar(): void
     {
+        // Teams + projects moved out of AppSidebar into the tasks-page
+        // workspace-sidebar (resources/views/livewire/tasks/partials/
+        // workspace-sidebar.blade.php). We GET /tasks to render that surface.
         $user = User::factory()->create();
         $acme = Team::factory()->create(['name' => 'Acme Co']);
         $other = Team::factory()->create(['name' => 'Hidden Team']);
@@ -208,8 +212,7 @@ class AppSidebarTest extends TestCase
         $response = $this->get(route('tasks'));
 
         $response->assertOk();
-        $response->assertSee('data-test="sidebar-teams"', escape: false);
-        $response->assertSee('data-test="mobile-teams"', escape: false);
+        $response->assertSee('data-test="workspace-sidebar"', escape: false);
         $response->assertSeeText('Acme Co');
         $response->assertDontSeeText('Hidden Team');
     }
@@ -323,8 +326,12 @@ class AppSidebarTest extends TestCase
             ->assertSet('createProjectTeamId', 42);
     }
 
-    public function test_create_project_makes_it_appear_in_sidebar_without_remount(): void
+    public function test_create_project_makes_it_appear_in_sidebar(): void
     {
+        // AppSidebar still owns the create-project Livewire flow + modal.
+        // The visible project list moved to the tasks-page workspace-sidebar,
+        // so the post-create "appears in sidebar" assertion is verified by
+        // round-tripping through /tasks?team={id}.
         Storage::fake('public');
         $user = User::factory()->create();
         $team = Team::factory()->create();
@@ -340,14 +347,17 @@ class AppSidebarTest extends TestCase
             ->call('createProject')
             ->assertSet('newProjectName', '')
             ->assertSet('createProjectTeamId', $team->id)
-            ->assertDispatched('project-list-changed')
-            ->assertSee('Brand new project');
+            ->assertDispatched('project-list-changed');
 
         $this->assertDatabaseHas('projects', [
             'team_id' => $team->id,
             'name' => 'Brand new project',
             'description' => 'Some description',
         ]);
+
+        $this->get(route('tasks').'?team='.$team->id)
+            ->assertOk()
+            ->assertSeeText('Brand new project');
     }
 
     public function test_create_project_with_logo_stores_file_and_renders(): void
@@ -364,11 +374,14 @@ class AppSidebarTest extends TestCase
             ->call('openCreateProject', $team->id)
             ->set('newProjectName', 'Logo project')
             ->set('newProjectLogo', UploadedFile::fake()->image('logo.png'))
-            ->call('createProject')
-            ->assertSee('Logo project');
+            ->call('createProject');
 
         $this->assertCount(1, Storage::disk('public')->files("project-logos/{$team->id}"));
         $this->assertNotNull(Project::first()->logo);
+
+        $this->get(route('tasks').'?team='.$team->id)
+            ->assertOk()
+            ->assertSeeText('Logo project');
     }
 
     public function test_create_project_validation_error_surfaces(): void
@@ -396,38 +409,66 @@ class AppSidebarTest extends TestCase
         $project = Project::factory()->create(['team_id' => $team->id, 'name' => 'Doomed project']);
         $this->actingAs($user);
 
+        // Project is visible in the workspace-sidebar before deletion.
+        $this->get(route('tasks').'?team='.$team->id)->assertSeeText('Doomed project');
+
         Livewire::test('app-sidebar')
             ->set('activeSegment', 'tasks')
             ->call('toggleTeam', $team->id)
-            ->assertSee('Doomed project')
             ->call('confirmDeleteProject', $project->id)
             ->assertSet('confirmDeleteProjectId', $project->id)
             ->call('deleteProject')
             ->assertSet('confirmDeleteProjectId', null)
-            ->assertDispatched('project-list-changed')
-            ->assertDontSee('Doomed project');
+            ->assertDispatched('project-list-changed');
 
         $this->assertSame(0, Project::count());
+
+        // And gone from the workspace-sidebar afterwards.
+        $this->get(route('tasks').'?team='.$team->id)->assertDontSeeText('Doomed project');
     }
 
-    public function test_member_does_not_see_delete_button(): void
+    public function test_member_cannot_delete_or_edit_project(): void
     {
+        // Project settings + deletion live behind ProjectPolicy::delete /
+        // ProjectPolicy::update, both of which require Owner role. Members
+        // calling the AppSidebar Livewire methods must be blocked by the
+        // service-layer Gate check (rendered affordances were dropped in the
+        // workspace-sidebar redesign, so there's no DOM toggle to assert).
+        //
+        // Livewire converts AuthorizationException into a 403-style response
+        // in test mode rather than letting it bubble, so we assert enforcement
+        // by checking the project is untouched after each attempt.
         $user = User::factory()->create();
         $team = Team::factory()->create();
         $team->members()->attach($user->id, ['role' => TeamRole::Member->value]);
         $project = Project::factory()->create(['team_id' => $team->id, 'name' => 'Visible project']);
         $this->actingAs($user);
 
+        // The project is still visible in the workspace-sidebar list — only
+        // the destructive actions are gated.
+        $this->get(route('tasks').'?team='.$team->id)->assertSeeText('Visible project');
+
+        // Delete attempt: DeleteProjectService rejects non-owners.
         Livewire::test('app-sidebar')
-            ->set('activeSegment', 'tasks')
-            ->call('toggleTeam', $team->id)
-            ->assertSee('Visible project')
-            ->assertDontSee("data-test=\"sidebar-delete-project-{$project->id}\"", escape: false)
-            ->assertDontSee("data-test=\"sidebar-settings-project-{$project->id}\"", escape: false);
+            ->call('confirmDeleteProject', $project->id)
+            ->call('deleteProject');
+        $this->assertNotNull(Project::find($project->id));
+
+        // Update attempt: UpdateProjectService rejects non-owners.
+        Livewire::test('app-sidebar')
+            ->call('openProjectSettings', $project->id)
+            ->set('editProjectName', 'Renamed by member')
+            ->set('editProjectDescription', 'should not stick')
+            ->call('updateProject');
+        $this->assertSame('Visible project', Project::find($project->id)->name);
     }
 
-    public function test_owner_sees_settings_cog_and_can_open_modal(): void
+    public function test_owner_can_open_project_settings_modal(): void
     {
+        // The settings modal still lives on the AppSidebar Livewire component;
+        // opening it pre-fills the edit form with the current project values.
+        // The visual entry point moved to the per-project workspace pages —
+        // this test verifies the Livewire method contract.
         $user = User::factory()->create();
         $team = Team::factory()->create();
         $team->members()->attach($user->id, ['role' => TeamRole::Owner->value]);
@@ -438,17 +479,9 @@ class AppSidebarTest extends TestCase
         ]);
         $this->actingAs($user);
 
-        $component = Livewire::test('app-sidebar')
+        Livewire::test('app-sidebar')
             ->set('activeSegment', 'tasks')
-            ->call('toggleTeam', $team->id);
-
-        $this->assertStringContainsString(
-            "sidebar-settings-project-{$project->id}",
-            $component->html(),
-        );
-
-        // Opening the modal pre-fills the form with the project's current values.
-        $component
+            ->call('toggleTeam', $team->id)
             ->call('openProjectSettings', $project->id)
             ->assertSet('projectSettingsId', $project->id)
             ->assertSet('editProjectName', 'Cog project')
@@ -468,25 +501,30 @@ class AppSidebarTest extends TestCase
         ]);
         $this->actingAs($user);
 
+        // Visible under the old name before rename.
+        $this->get(route('tasks').'?team='.$team->id)->assertSeeText('Old name');
+
         Livewire::test('app-sidebar')
             ->set('activeSegment', 'tasks')
             ->call('toggleTeam', $team->id)
-            ->assertSee('Old name')
             ->call('openProjectSettings', $project->id)
             ->set('editProjectName', 'Renamed project')
             ->set('editProjectDescription', 'Renamed desc')
             ->call('updateProject')
             ->assertSet('projectSettingsId', null)
             ->assertSet('editProjectName', '')
-            ->assertDispatched('project-list-changed')
-            ->assertSee('Renamed project')
-            ->assertDontSee('Old name');
+            ->assertDispatched('project-list-changed');
 
         $this->assertDatabaseHas('projects', [
             'id' => $project->id,
             'name' => 'Renamed project',
             'description' => 'Renamed desc',
         ]);
+
+        // Workspace-sidebar shows the new name after the rename.
+        $response = $this->get(route('tasks').'?team='.$team->id);
+        $response->assertSeeText('Renamed project');
+        $response->assertDontSeeText('Old name');
     }
 
     public function test_owner_can_replace_logo_via_settings(): void
