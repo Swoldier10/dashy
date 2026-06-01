@@ -47,6 +47,13 @@ return [
         // include `gpt-5.4`, `gpt-5.4-codex`, `gpt-5.2-codex`. The platform
         // names like `gpt-5-codex` are NOT valid against this backend.
         'model' => env('CODEX_MODEL', 'gpt-5.5'),
+
+        // Wall-clock ceiling (seconds) for a streamed chat turn, plus the
+        // connect timeout. Generous enough for a long multi-tool turn, while
+        // still bounding a hung upstream so it can't tie up a web worker or
+        // leak an abandoned stream indefinitely.
+        'timeout' => (int) env('CODEX_TIMEOUT', 300),
+        'connect_timeout' => (int) env('CODEX_CONNECT_TIMEOUT', 15),
     ],
 
     'openai' => [

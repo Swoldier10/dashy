@@ -2,22 +2,28 @@
 
 namespace Database\Seeders;
 
+use App\Domains\Teams\Services\EnsurePersonalTeamService;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * Idempotent and team-safe: every seeded user gets a personal team via
+     * EnsurePersonalTeamService, so seeding never produces the teamless users
+     * the bare factory would (every real user must own a personal team).
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $ensurePersonalTeam = app(EnsurePersonalTeamService::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $testUser = User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            ['name' => 'Test User'],
+        );
+
+        $ensurePersonalTeam->execute($testUser);
     }
 }

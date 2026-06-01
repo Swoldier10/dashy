@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -35,6 +36,14 @@ final class SendMessageService
      * would blow up cost and trip the provider's rate limit for every tenant.
      */
     private const MAX_MESSAGES_PER_MINUTE = 30;
+
+    /**
+     * Hard cap on the JSON size of a tool result persisted to
+     * `messages.tool_call`. The model's *view* is already truncated in
+     * LlmInputBuilder; this stops a pathological tool result from bloating or
+     * breaking the row insert.
+     */
+    private const MAX_TOOL_RESULT_BYTES = 16000;
 
     public function __construct(
         private CreateMessageAction $createMessage,
@@ -254,7 +263,7 @@ final class SendMessageService
             try {
                 $result = $tool->execute($user, $payload['arguments']);
                 $payload['status'] = 'executed';
-                $payload['result'] = $result;
+                $payload['result'] = $this->capToolResult($result);
             } catch (Throwable $e) {
                 Log::warning('Inline tool execution failed', [
                     'tool' => $payload['name'] ?? null,
@@ -267,5 +276,31 @@ final class SendMessageService
 
         // Everything else stays pending; the UI drives them.
         return $payload;
+    }
+
+    /**
+     * Replace a pathologically large tool result with a small truncated marker
+     * before it is persisted, so a runaway payload can't bloat or break the
+     * `messages.tool_call` JSON column.
+     */
+    private function capToolResult(mixed $result): mixed
+    {
+        $encoded = json_encode($result);
+
+        // A non-encodable result (resource / closure / circular ref) would be
+        // silently mangled by the model's array cast on persist — replace it
+        // with a safe marker instead.
+        if ($encoded === false) {
+            return ['error' => __('Tool result could not be encoded.')];
+        }
+
+        if (strlen($encoded) > self::MAX_TOOL_RESULT_BYTES) {
+            return [
+                'truncated' => true,
+                'preview' => Str::limit($encoded, 2000),
+            ];
+        }
+
+        return $result;
     }
 }

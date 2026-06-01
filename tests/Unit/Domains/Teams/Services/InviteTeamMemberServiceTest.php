@@ -149,6 +149,21 @@ class InviteTeamMemberServiceTest extends TestCase
         $this->assertSame(TeamRole::Owner, $invitation->role);
     }
 
+    public function test_cannot_invite_to_personal_team(): void
+    {
+        Mail::fake();
+        $owner = User::factory()->create();
+        $team = Team::factory()->personal()->create();
+        $team->members()->attach($owner->id, ['role' => TeamRole::Owner->value]);
+
+        $this->expectException(ValidationException::class);
+
+        app(InviteTeamMemberService::class)->execute($owner, $team, [
+            'email' => 'someone@example.com',
+            'role' => 'member',
+        ]);
+    }
+
     /** @return array{0: User, 1: Team} */
     private function makeTeamWithOwner(?string $ownerName = null, ?string $teamName = null): array
     {

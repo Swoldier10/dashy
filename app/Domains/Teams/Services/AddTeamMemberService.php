@@ -29,6 +29,12 @@ final class AddTeamMemberService
     {
         Gate::forUser($actor)->authorize('addMember', $team);
 
+        if ($team->personal_team) {
+            throw ValidationException::withMessages([
+                'email' => __("You can't add members to your personal team."),
+            ]);
+        }
+
         $validated = Validator::make($input, [
             'email' => ['required', 'email'],
         ])->validate();

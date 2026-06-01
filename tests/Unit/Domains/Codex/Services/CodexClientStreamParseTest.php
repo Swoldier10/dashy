@@ -3,6 +3,7 @@
 namespace Tests\Unit\Domains\Codex\Services;
 
 use App\Domains\Codex\DTOs\ChatStreamEvent;
+use App\Domains\Codex\Exceptions\CodexApiException;
 use App\Domains\Codex\Models\CodexConnection;
 use App\Domains\Codex\Services\CodexClient;
 use App\Models\User;
@@ -95,5 +96,49 @@ class CodexClientStreamParseTest extends TestCase
         $this->assertSame('fc_42', $completed->callId);
         $this->assertSame('create_task', $completed->name);
         $this->assertSame($args, $completed->argumentsJson);
+    }
+
+    public function test_stream_without_terminal_marker_yields_partial_then_throws_truncated(): void
+    {
+        // No `[DONE]` and no `response.completed` — the socket simply ended.
+        $sse = implode("\n", [
+            'data: {"type":"response.output_text.delta","delta":"Partial"}',
+            '',
+        ]);
+        $this->fakeStream($sse);
+
+        $deltas = [];
+        try {
+            foreach (app(CodexClient::class)->streamChat(
+                $this->freshConnection(),
+                [['type' => 'message', 'role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'hi']]]],
+            ) as $event) {
+                $deltas[] = $event->text;
+            }
+            $this->fail('Expected CodexApiException for a truncated stream.');
+        } catch (CodexApiException $e) {
+            $this->assertTrue($e->isStreamTruncated);
+            $this->assertSame(['Partial'], $deltas, 'Partial deltas should stream before truncation is detected.');
+        }
+    }
+
+    public function test_done_marker_is_treated_as_clean_completion(): void
+    {
+        $sse = implode("\n", [
+            'data: {"type":"response.output_text.delta","delta":"Done"}',
+            'data: [DONE]',
+            '',
+        ]);
+        $this->fakeStream($sse);
+
+        $deltas = [];
+        foreach (app(CodexClient::class)->streamChat(
+            $this->freshConnection(),
+            [['type' => 'message', 'role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'hi']]]],
+        ) as $event) {
+            $deltas[] = $event->text;
+        }
+
+        $this->assertSame(['Done'], $deltas);
     }
 }

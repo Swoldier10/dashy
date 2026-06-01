@@ -4,8 +4,11 @@ namespace App\Domains\Codex\Services;
 
 use App\Domains\Codex\DTOs\ChatStreamEvent;
 use App\Domains\Codex\Exceptions\CodexApiException;
+use App\Domains\Codex\Exceptions\CodexNotConnectedException;
 use App\Domains\Codex\Models\CodexConnection;
 use Generator;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -17,6 +20,11 @@ use Illuminate\Support\Str;
  * CLI uses). The caller supplies pre-shaped Responses-API `input` items; this
  * client just streams the SSE response and yields stream events — both text
  * deltas and function-call deltas/completions when tools are provided.
+ *
+ * Every failure mode is translated into a typed exception so the UI can react
+ * specifically: a revoked token flips to "Connect Codex"
+ * (CodexNotConnectedException); every other API/network/stream failure becomes
+ * a CodexApiException carrying a structured status + a friendly userMessage().
  */
 class CodexClient
 {
@@ -36,6 +44,9 @@ class CodexClient
      * @param  array<int, array<string, mixed>>  $inputItems  Pre-shaped Responses-API input items (message/function_call/function_call_output)
      * @param  array<int, array<string, mixed>>  $tools
      * @return Generator<int, ChatStreamEvent>
+     *
+     * @throws CodexNotConnectedException when the token is revoked (401) — caller should prompt reconnect
+     * @throws CodexApiException on any other API/network/stream failure
      */
     public function streamChat(
         CodexConnection $connection,
@@ -48,71 +59,122 @@ class CodexClient
 
         $sessionId = (string) Str::uuid();
 
-        $response = Http::withToken($connection->access_token)
-            ->withHeaders([
-                'originator' => self::ORIGINATOR,
-                'User-Agent' => self::ORIGINATOR,
-                'Accept' => 'text/event-stream',
-                'OpenAI-Beta' => 'responses=experimental',
-                'session_id' => $sessionId,
-            ])
-            ->withOptions(['stream' => true])
-            ->post(self::CHAT_URL, [
-                'model' => config('services.codex.model'),
-                'instructions' => $instructions ?? self::DEFAULT_INSTRUCTIONS,
-                'input' => $inputItems,
-                'tools' => $tools,
-                'tool_choice' => $toolChoice,
-                'parallel_tool_calls' => true,
-                'reasoning' => null,
-                'store' => false,
-                'stream' => true,
-                'include' => [],
-            ]);
-
-        if ($response->failed()) {
-            $bodyText = (string) $response->body();
-            Log::warning('Codex API error', [
-                'status' => $response->status(),
-                'body' => Str::limit($bodyText, 2000),
-            ]);
-
-            throw new CodexApiException(sprintf(
-                'Codex API error %d: %s',
-                $response->status(),
-                Str::limit($bodyText, 200) ?: '(empty body)',
-            ));
+        try {
+            $response = Http::withToken($connection->access_token)
+                ->withHeaders([
+                    'originator' => self::ORIGINATOR,
+                    'User-Agent' => self::ORIGINATOR,
+                    'Accept' => 'text/event-stream',
+                    'OpenAI-Beta' => 'responses=experimental',
+                    'session_id' => $sessionId,
+                ])
+                ->withOptions(['stream' => true])
+                ->connectTimeout((int) config('services.codex.connect_timeout', 15))
+                ->timeout((int) config('services.codex.timeout', 120))
+                ->post(self::CHAT_URL, [
+                    'model' => config('services.codex.model'),
+                    'instructions' => $instructions ?? self::DEFAULT_INSTRUCTIONS,
+                    'input' => $inputItems,
+                    'tools' => $tools,
+                    'tool_choice' => $toolChoice,
+                    'parallel_tool_calls' => true,
+                    'reasoning' => null,
+                    'store' => false,
+                    'stream' => true,
+                    'include' => [],
+                ]);
+        } catch (ConnectionException $e) {
+            // DNS / connection refused / TLS / connect timeout — never reached
+            // the API. Surface as a connection error, not a 500.
+            throw CodexApiException::connectionFailed($e);
         }
 
+        if ($response->status() === 401) {
+            // A 401 right after a freshly-ensured token means the token was
+            // revoked server-side. Drop the dead connection so the UI flips
+            // back to the "Connect Codex" prompt instead of looping on auth
+            // errors.
+            $this->auth->forget($connection);
+
+            throw new CodexNotConnectedException('Codex session expired. Please reconnect.');
+        }
+
+        if ($response->failed()) {
+            $exception = CodexApiException::fromResponse($response);
+            Log::warning('Codex API error', [
+                'status' => $exception->status,
+                'error_type' => $exception->errorType,
+                'message' => Str::limit($exception->getMessage(), 2000),
+            ]);
+
+            throw $exception;
+        }
+
+        yield from $this->readStream($response);
+    }
+
+    /**
+     * Consume the SSE body, yielding translated stream events. Throws a typed
+     * CodexApiException if the socket drops mid-read or the stream ends before
+     * a terminal marker (`[DONE]` or `response.completed`) is seen — letting
+     * the caller persist whatever streamed so far and show a friendly notice.
+     *
+     * @return Generator<int, ChatStreamEvent>
+     */
+    private function readStream(Response $response): Generator
+    {
         $body = $response->toPsrResponse()->getBody();
         $buffer = '';
 
         /** @var array<int, array{call_id: string, name: string, arguments: string}> $toolCalls */
         $toolCalls = [];
 
-        while (! $body->eof()) {
-            $buffer .= $body->read(4096);
+        $completed = false;
 
-            while (($newline = strpos($buffer, "\n")) !== false) {
-                $line = substr($buffer, 0, $newline);
-                $buffer = substr($buffer, $newline + 1);
+        try {
+            while (! $body->eof()) {
+                $buffer .= $body->read(4096);
 
-                if (! str_starts_with($line, 'data:')) {
-                    continue;
+                while (($newline = strpos($buffer, "\n")) !== false) {
+                    $line = substr($buffer, 0, $newline);
+                    $buffer = substr($buffer, $newline + 1);
+
+                    if (! str_starts_with($line, 'data:')) {
+                        continue;
+                    }
+
+                    $data = trim(substr($line, 5));
+                    if ($data === '') {
+                        continue;
+                    }
+                    if ($data === '[DONE]') {
+                        $completed = true;
+
+                        continue;
+                    }
+
+                    $payload = json_decode($data, true);
+                    if (! is_array($payload)) {
+                        continue;
+                    }
+
+                    // Any terminal response.* event (completed / incomplete /
+                    // failed) means the server ended the stream on purpose — only
+                    // the *absence* of a terminal marker signals a real cut-off.
+                    if (in_array($payload['type'] ?? null, ['response.completed', 'response.incomplete', 'response.failed'], true)) {
+                        $completed = true;
+                    }
+
+                    yield from $this->translateEvent($payload, $toolCalls);
                 }
-
-                $data = trim(substr($line, 5));
-                if ($data === '' || $data === '[DONE]') {
-                    continue;
-                }
-
-                $payload = json_decode($data, true);
-                if (! is_array($payload)) {
-                    continue;
-                }
-
-                yield from $this->translateEvent($payload, $toolCalls);
             }
+        } catch (ConnectionException $e) {
+            // Read timed out / socket dropped mid-stream.
+            throw CodexApiException::connectionFailed($e);
+        }
+
+        if (! $completed) {
+            throw CodexApiException::streamTruncated();
         }
     }
 
@@ -193,5 +255,4 @@ class CodexClient
             unset($toolCalls[$index]);
         }
     }
-
 }

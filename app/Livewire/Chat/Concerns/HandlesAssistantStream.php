@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Throwable;
 
 trait HandlesAssistantStream
 {
@@ -104,6 +105,7 @@ trait HandlesAssistantStream
         $assembled = '';
         /** @var array<int, ChatStreamEvent> $toolCallEvents */
         $toolCallEvents = [];
+        $statuses = [];
 
         try {
             foreach ($sendMessage->streamAssistant($chat, Auth::user(), $this->screen) as $event) {
@@ -119,37 +121,54 @@ trait HandlesAssistantStream
                 }
             }
         } catch (CodexNotConnectedException) {
+            // No connection, revoked token (401), or a failed refresh. The
+            // connection has been removed, so the composer re-renders into the
+            // "Connect Codex" state via the isCodexConnected computed.
+            $this->savePartial($sendMessage, $chat, $assembled, $parentUserMessageId);
             $this->addError('message', __('Connect Codex before sending a message.'));
             $this->finishTurn();
 
             return;
         } catch (CodexApiException $e) {
-            if ($assembled !== '') {
-                $sendMessage->saveAssistantMessage(
-                    $chat,
-                    $assembled."\n\n_(stream interrupted)_",
-                    null,
-                    $parentUserMessageId,
-                );
-            }
-            $this->toast('danger', __('Codex API error').': '.$e->getMessage());
+            // Out of credits, rate limited, billing, server error, network
+            // failure, truncated stream — surface the specific friendly message.
+            $this->savePartial($sendMessage, $chat, $assembled, $parentUserMessageId);
+            $this->toast('danger', $e->userMessage());
+            report($e);
+            $this->finishTurn();
+
+            return;
+        } catch (Throwable $e) {
+            // Anything unforeseen (prompt-builder bug, DB hiccup mid-stream, …)
+            // degrades to a toast — never a raw 500.
+            $this->savePartial($sendMessage, $chat, $assembled, $parentUserMessageId);
+            $this->toast('danger', __('Something went wrong. Please try again.'));
             report($e);
             $this->finishTurn();
 
             return;
         }
 
-        // Persist text first so the order in DB matches the stream's order
+        // Stream completed cleanly. Persist the assistant turn — but guard the
+        // persistence too: a DB/dispatch hiccup here must degrade to a toast,
+        // not a 500. Text is saved first so DB order matches stream order
         // (text typically precedes tool calls within one model response).
-        if ($assembled !== '') {
-            $sendMessage->saveAssistantMessage($chat, $assembled, null, $parentUserMessageId);
-        }
+        try {
+            if ($assembled !== '') {
+                $sendMessage->saveAssistantMessage($chat, $assembled, null, $parentUserMessageId);
+            }
 
-        $statuses = [];
-        foreach ($toolCallEvents as $event) {
-            $payload = $sendMessage->dispatchToolCall(Auth::user(), $event, $chat);
-            $sendMessage->saveAssistantMessage($chat, '', $payload, $parentUserMessageId);
-            $statuses[] = (string) ($payload['status'] ?? '');
+            foreach ($toolCallEvents as $event) {
+                $payload = $sendMessage->dispatchToolCall(Auth::user(), $event, $chat);
+                $sendMessage->saveAssistantMessage($chat, '', $payload, $parentUserMessageId);
+                $statuses[] = (string) ($payload['status'] ?? '');
+            }
+        } catch (Throwable $e) {
+            $this->toast('danger', __('Something went wrong. Please try again.'));
+            report($e);
+            $this->finishTurn();
+
+            return;
         }
 
         $this->streamingAssistant = '';
@@ -157,6 +176,33 @@ trait HandlesAssistantStream
         unset($this->activeChat);
 
         $this->maybeContinueLoop($statuses, $toolCallEvents !== [], $assembled);
+    }
+
+    /**
+     * Persist whatever assistant text streamed before an error, tagged as
+     * interrupted, so the user keeps the partial reply. Swallows its own
+     * persistence failure (already in an error path — never escalate to a 500).
+     */
+    private function savePartial(
+        SendMessageService $sendMessage,
+        Chat $chat,
+        string $assembled,
+        ?int $parentUserMessageId,
+    ): void {
+        if ($assembled === '') {
+            return;
+        }
+
+        try {
+            $sendMessage->saveAssistantMessage(
+                $chat,
+                $assembled."\n\n_(stream interrupted)_",
+                null,
+                $parentUserMessageId,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /**

@@ -30,6 +30,11 @@ final class ConsumePendingInvitationOnRegister
         try {
             $invitation = $this->accept->execute($user, $token);
         } catch (TeamInvitationException) {
+            // The invite went stale (expired / revoked / wrong email) between
+            // the click and registration. Bounce to the invite page so the
+            // new user sees exactly why instead of landing on /chat confused.
+            session()->put('url.intended', route('invite.show', $token));
+
             return;
         } catch (Throwable $e) {
             Log::warning('Failed to auto-accept invitation on register', [

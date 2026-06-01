@@ -17,10 +17,12 @@ use App\Livewire\Concerns\ResolvesCodexState;
 use App\Support\Concerns\DispatchesDashyUi;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Throwable;
 
 class ChatPanel extends Component
 {
@@ -92,6 +94,13 @@ class ChatPanel extends Component
 
     public function sendMessage(SendMessageService $sendMessage, CreateChatService $createChat): void
     {
+        // Guard against double-submit / rapid re-fire while a turn is already
+        // in flight — a second send would clobber the first's streaming state.
+        // Every error/finish path resets isThinking, so this can't wedge.
+        if ($this->isThinking) {
+            return;
+        }
+
         $this->resetErrorBag('message');
         $this->resetValidation('message');
 
@@ -114,20 +123,31 @@ class ChatPanel extends Component
 
         $isNewChat = $this->activeChat === null;
 
-        if ($isNewChat) {
-            // CreateChatService writes the chat + first message in one
-            // transaction. When attachments are present we pass them through
-            // so the very first user message includes them.
-            $seed = $hasText ? $this->message : $this->seedFromAttachments();
-            $chat = $createChat->execute(Auth::user(), $seed, $this->persistedAttachments);
-        } else {
-            $chat = $this->activeChat;
-            $sendMessage->saveUserMessage($chat, $this->message, $this->persistedAttachments);
-        }
+        try {
+            if ($isNewChat) {
+                // CreateChatService writes the chat + first message in one
+                // transaction. When attachments are present we pass them through
+                // so the very first user message includes them.
+                $seed = $hasText ? $this->message : $this->seedFromAttachments();
+                $chat = $createChat->execute(Auth::user(), $seed, $this->persistedAttachments);
+            } else {
+                $chat = $this->activeChat;
+                $sendMessage->saveUserMessage($chat, $this->message, $this->persistedAttachments);
+            }
 
-        // A new user message ends any prior stop request — the loop is fresh.
-        if ($chat->stop_requested_at !== null) {
-            app(UpdateChatStopStateService::class)->clearStop(Auth::user(), $chat);
+            // A new user message ends any prior stop request — the loop is fresh.
+            if ($chat->stop_requested_at !== null) {
+                app(UpdateChatStopStateService::class)->clearStop(Auth::user(), $chat);
+            }
+        } catch (ValidationException $e) {
+            // Rate limit / content-length / attachment validation — let Livewire
+            // render it on the composer field instead of degrading to a toast.
+            throw $e;
+        } catch (Throwable $e) {
+            $this->toast('danger', __('Something went wrong sending your message. Please try again.'));
+            report($e);
+
+            return;
         }
 
         $this->activeChatId = $chat->id;

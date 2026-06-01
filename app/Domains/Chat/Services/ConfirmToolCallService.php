@@ -11,6 +11,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Throwable;
 
 final class ConfirmToolCallService
 {
@@ -66,7 +67,26 @@ final class ConfirmToolCallService
                 return $updated;
             }
 
-            $payload = $tool->execute($actor, $result->normalized);
+            try {
+                // Wrap execute() in its own savepoint so that if it throws
+                // mid-write its partial changes always roll back — even for a
+                // tool that doesn't open its own transaction. The failure is
+                // then recorded below in the still-open outer transaction.
+                $payload = DB::transaction(fn () => $tool->execute($actor, $result->normalized));
+            } catch (Throwable $e) {
+                // Record the failure inline so the card shows the reason and the
+                // model sees it on the next turn — the request never 500s.
+                report($e);
+
+                $failed = array_merge($toolCall, [
+                    'arguments' => $result->normalized,
+                    'status' => 'failed',
+                    'validation_errors' => [$e->getMessage()],
+                ]);
+                $this->update->execute($message, $failed);
+
+                return $failed;
+            }
 
             $updated = array_merge($toolCall, [
                 'arguments' => $result->normalized,

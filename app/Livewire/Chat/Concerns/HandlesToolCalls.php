@@ -120,7 +120,16 @@ trait HandlesToolCalls
             return null;
         }
 
-        return app(AiToolCardPresenter::class)->present($toolCall, Auth::user());
+        try {
+            return app(AiToolCardPresenter::class)->present($toolCall, Auth::user());
+        } catch (Throwable $e) {
+            // A presenter failure must never 500 the whole chat render. Render
+            // no card (the router treats null as "nothing to show") rather than
+            // a half-built card that could re-throw inside a tool partial.
+            report($e);
+
+            return null;
+        }
     }
 
     /**

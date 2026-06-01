@@ -13,7 +13,9 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Tests\TestCase;
 
 class ExportMonthTimeEntriesServiceTest extends TestCase
@@ -35,7 +37,7 @@ class ExportMonthTimeEntriesServiceTest extends TestCase
         return [$user, $project, $task];
     }
 
-    private function loadSheet(string $bytes): \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
+    private function loadSheet(string $bytes): Worksheet
     {
         $tmp = tempnam(sys_get_temp_dir(), 'xlsx_').'.xlsx';
         file_put_contents($tmp, $bytes);
@@ -142,6 +144,21 @@ class ExportMonthTimeEntriesServiceTest extends TestCase
         $this->assertNotNull($sheet->getCell('B5')->getValue());
         $this->assertNotNull($sheet->getCell('B6')->getValue());
         $this->assertSame('Summe', $sheet->getCell('A7')->getValue());
+    }
+
+    public function test_export_rejects_a_non_member_user_id(): void
+    {
+        [$user, $project] = $this->bootScenario();
+        $stranger = User::factory()->create();
+
+        $this->expectException(ValidationException::class);
+
+        app(ExportMonthTimeEntriesService::class)->execute(
+            $user,
+            $project->id,
+            CarbonImmutable::parse('2026-05-15'),
+            $stranger->id,
+        );
     }
 
     public function test_filename_uses_project_slug_and_month(): void

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 trait ManagesChatAttachments
 {
@@ -86,7 +87,12 @@ trait ManagesChatAttachments
         $att = $this->persistedAttachments[$index];
         $path = $att['path'] ?? null;
         if (is_string($path) && $path !== '') {
-            Storage::disk('public')->delete($path);
+            try {
+                Storage::disk('public')->delete($path);
+            } catch (Throwable $e) {
+                // Best-effort cleanup — still drop it from the composer below.
+                report($e);
+            }
         }
 
         unset($this->persistedAttachments[$index]);

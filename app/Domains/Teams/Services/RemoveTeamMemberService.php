@@ -2,6 +2,7 @@
 
 namespace App\Domains\Teams\Services;
 
+use App\Domains\Tasks\Services\RemoveMemberAssignmentsForTeamService;
 use App\Domains\Teams\Actions\CountTeamOwnersAction;
 use App\Domains\Teams\Actions\DetachTeamMemberAction;
 use App\Domains\Teams\Actions\IsTeamMemberAction;
@@ -20,6 +21,7 @@ final class RemoveTeamMemberService
         private IsTeamMemberAction $isMember,
         private IsTeamOwnerAction $isOwner,
         private CountTeamOwnersAction $countOwners,
+        private RemoveMemberAssignmentsForTeamService $removeAssignments,
     ) {}
 
     public function execute(User $actor, Team $team, User $target): void
@@ -49,6 +51,15 @@ final class RemoveTeamMemberService
             }
         }
 
-        DB::transaction(fn () => $this->detachMember->execute($team, $target));
+        DB::transaction(function () use ($team, $target) {
+            // Clear the leaving member's task assignments so they don't linger
+            // as a ghost assignee (and so they can be cleanly re-added later).
+            // Time entries are intentionally untouched — they are retained
+            // work/billing records, removed only by manual deletion or by
+            // deleting the task.
+            $this->removeAssignments->execute((int) $team->id, (int) $target->id);
+
+            $this->detachMember->execute($team, $target);
+        });
     }
 }

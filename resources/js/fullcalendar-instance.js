@@ -103,13 +103,23 @@ document.addEventListener('alpine:init', () => {
                 }),
             );
 
-            const refetch = () => this.calendar.refetchEvents();
-            window.Livewire.on('calendar-events-changed', refetch);
-            window.Livewire.on('task-list-changed', refetch);
-            this._livewireUnbinders.push(() => {
-                // Livewire 4 doesn't expose `.off`, but instance is destroyed
-                // with the element, so listeners die with it. No-op here.
-            });
+            const refetch = () => {
+                if (! this.calendar) {
+                    return;
+                }
+                this.calendar.refetchEvents();
+            };
+            // `Livewire.on` returns an unsubscribe function. These are GLOBAL
+            // listeners, so they must be torn down in destroy() — otherwise after
+            // a `wire:navigate` away from the calendar the closure still fires
+            // against a now-null `this.calendar`, throwing inside Livewire's event
+            // dispatch loop and aborting the DOM morph (e.g. blanking the task
+            // drawer when a time entry dispatches `task-list-changed`).
+            // See https://livewire.laravel.com/docs/4.x/javascript.
+            this._livewireUnbinders.push(
+                window.Livewire.on('calendar-events-changed', refetch),
+                window.Livewire.on('task-list-changed', refetch),
+            );
 
             this._mql = window.matchMedia('(max-width: 767px)');
             this._onMqlChange = () => this._applyMobileView();

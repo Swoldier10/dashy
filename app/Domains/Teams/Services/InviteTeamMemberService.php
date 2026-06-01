@@ -37,6 +37,12 @@ final class InviteTeamMemberService
     {
         Gate::forUser($actor)->authorize('inviteMember', $team);
 
+        if ($team->personal_team) {
+            throw ValidationException::withMessages([
+                'email' => __("You can't invite members to your personal team."),
+            ]);
+        }
+
         $validated = Validator::make($input, [
             'email' => ['required', 'email:rfc'],
             'role' => ['required', Rule::enum(TeamRole::class)],

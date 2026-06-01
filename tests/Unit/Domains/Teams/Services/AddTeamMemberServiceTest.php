@@ -108,6 +108,22 @@ class AddTeamMemberServiceTest extends TestCase
         );
     }
 
+    public function test_cannot_add_to_personal_team(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->personal()->create();
+        $team->members()->attach($owner->id, ['role' => TeamRole::Owner->value]);
+        User::factory()->create(['email' => 'invitee@example.com']);
+
+        $this->expectException(ValidationException::class);
+
+        app(AddTeamMemberService::class)->execute(
+            $owner,
+            $team,
+            ['email' => 'invitee@example.com'],
+        );
+    }
+
     /** @return array{0: User, 1: Team} */
     private function makeTeamWithOwner(): array
     {

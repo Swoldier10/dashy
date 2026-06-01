@@ -195,4 +195,34 @@ class CodexAuthServiceTest extends TestCase
             $this->assertSame(0, CodexConnection::count());
         }
     }
+
+    public function test_forget_deletes_the_connection(): void
+    {
+        $user = User::factory()->create();
+        $connection = CodexConnection::create([
+            'user_id' => $user->id,
+            'access_token' => 'a',
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $this->service()->forget($connection);
+
+        $this->assertSame(0, CodexConnection::count());
+    }
+
+    public function test_poll_maps_known_device_code_error_to_a_specific_message(): void
+    {
+        $user = User::factory()->create();
+
+        Http::fake([
+            'https://auth.openai.com/api/accounts/deviceauth/token' => Http::response(['error' => 'access_denied'], 400),
+        ]);
+
+        try {
+            $this->service()->pollForToken($user, 'dev-1', 'ABCD-EFGH');
+            $this->fail('Expected CodexAuthException.');
+        } catch (CodexAuthException $e) {
+            $this->assertStringContainsString('denied', strtolower($e->getMessage()));
+        }
+    }
 }

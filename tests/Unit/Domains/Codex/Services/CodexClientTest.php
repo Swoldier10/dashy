@@ -3,10 +3,12 @@
 namespace Tests\Unit\Domains\Codex\Services;
 
 use App\Domains\Codex\Exceptions\CodexApiException;
+use App\Domains\Codex\Exceptions\CodexNotConnectedException;
 use App\Domains\Codex\Models\CodexConnection;
 use App\Domains\Codex\Services\CodexClient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -162,6 +164,68 @@ class CodexClientTest extends TestCase
         } catch (CodexApiException $e) {
             $this->assertStringContainsString('400', $e->getMessage());
             $this->assertStringContainsString('missing field', $e->getMessage());
+        }
+    }
+
+    public function test_insufficient_quota_429_is_flagged_as_out_of_credits(): void
+    {
+        Http::fake([
+            'https://chatgpt.com/backend-api/codex/responses' => Http::response(
+                '{"error":{"type":"insufficient_quota","message":"You exceeded your current quota"}}',
+                429,
+            ),
+        ]);
+
+        try {
+            foreach (app(CodexClient::class)->streamChat($this->connection(), [
+                ['type' => 'message', 'role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'Hi']]],
+            ]) as $_) {
+                // consume
+            }
+            $this->fail('Expected CodexApiException.');
+        } catch (CodexApiException $e) {
+            $this->assertTrue($e->isOutOfCredits());
+            $this->assertSame(429, $e->status);
+        }
+    }
+
+    public function test_401_drops_the_connection_and_throws_not_connected(): void
+    {
+        Http::fake([
+            'https://chatgpt.com/backend-api/codex/responses' => Http::response('{"error":{"message":"unauthorized"}}', 401),
+        ]);
+
+        $connection = $this->connection();
+        $this->assertSame(1, CodexConnection::count());
+
+        try {
+            foreach (app(CodexClient::class)->streamChat($connection, [
+                ['type' => 'message', 'role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'Hi']]],
+            ]) as $_) {
+                // consume
+            }
+            $this->fail('Expected CodexNotConnectedException.');
+        } catch (CodexNotConnectedException) {
+            $this->assertSame(0, CodexConnection::count(), 'A 401 should drop the dead connection so the UI can prompt reconnect.');
+        }
+    }
+
+    public function test_connection_failure_becomes_a_typed_connection_error(): void
+    {
+        Http::fake(function () {
+            throw new ConnectionException('Connection refused');
+        });
+
+        try {
+            foreach (app(CodexClient::class)->streamChat($this->connection(), [
+                ['type' => 'message', 'role' => 'user', 'content' => [['type' => 'input_text', 'text' => 'Hi']]],
+            ]) as $_) {
+                // consume
+            }
+            $this->fail('Expected CodexApiException.');
+        } catch (CodexApiException $e) {
+            $this->assertTrue($e->isConnectionError);
+            $this->assertNull($e->status);
         }
     }
 }

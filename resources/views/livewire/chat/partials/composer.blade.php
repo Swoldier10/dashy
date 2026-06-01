@@ -162,6 +162,9 @@
         },
         submitMessage() {
             if (this.recording) return;
+            // Don't fire a second turn while one is already streaming — the
+            // server guards this too, but bailing here keeps the UI honest.
+            if (this.$wire.isThinking) return;
             this.syncWire();
             const hasText = this.serialize().trim() !== '';
             const hasAtt = this.$wire.persistedAttachments && this.$wire.persistedAttachments.length > 0;
@@ -383,7 +386,7 @@
 
                     <button
                         type="submit"
-                        x-bind:disabled="recording || (isEmpty && (!$wire.persistedAttachments || $wire.persistedAttachments.length === 0))"
+                        x-bind:disabled="recording || $wire.isThinking || (isEmpty && (!$wire.persistedAttachments || $wire.persistedAttachments.length === 0))"
                         class="flex size-8 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-30"
                         style="background-color: var(--surface-2); color: var(--ink-muted);"
                         onmouseover="if (!this.disabled) { this.style.backgroundColor='var(--cocoa)'; this.style.color='var(--surface)'; }"

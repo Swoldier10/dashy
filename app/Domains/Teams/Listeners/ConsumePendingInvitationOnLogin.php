@@ -30,6 +30,11 @@ final class ConsumePendingInvitationOnLogin
         try {
             $invitation = $this->accept->execute($user, $token);
         } catch (TeamInvitationException) {
+            // The invite went stale (expired / revoked / wrong email) between
+            // the click and login. Bounce to the invite page so the user sees
+            // exactly why, rather than landing on /chat with no explanation.
+            session()->put('url.intended', route('invite.show', $token));
+
             return;
         } catch (Throwable $e) {
             Log::warning('Failed to auto-accept invitation on login', [

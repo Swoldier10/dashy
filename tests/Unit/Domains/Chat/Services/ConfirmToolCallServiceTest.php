@@ -2,6 +2,10 @@
 
 namespace Tests\Unit\Domains\Chat\Services;
 
+use App\Domains\Chat\Ai\Contracts\AiTool;
+use App\Domains\Chat\Ai\DTOs\AiToolValidationResult;
+use App\Domains\Chat\Ai\Enums\AiToolExecutionMode;
+use App\Domains\Chat\Ai\Services\AiToolRegistry;
 use App\Domains\Chat\Models\Chat;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Chat\Services\ConfirmToolCallService;
@@ -161,6 +165,120 @@ class ConfirmToolCallServiceTest extends TestCase
         $this->assertNotEmpty($message->tool_call['validation_errors']);
         // The user's typed edit is preserved so the form can show what they had.
         $this->assertSame('   ', $message->tool_call['arguments']['name']);
+    }
+
+    public function test_tool_execute_failure_records_failed_status_without_throwing(): void
+    {
+        $user = User::factory()->create();
+        [$message] = $this->pendingMessage($user);
+
+        // A tool that validates fine but blows up at execute() time must not
+        // bubble a 500 — the card is marked failed with the reason so the model
+        // can see it on the next turn. (AiToolRegistry is final, so register a
+        // real fake on a real registry rather than mocking it.)
+        $failingTool = new class implements AiTool
+        {
+            public function name(): string
+            {
+                return 'create_task';
+            }
+
+            public function description(): string
+            {
+                return 'fake';
+            }
+
+            public function executionMode(): AiToolExecutionMode
+            {
+                return AiToolExecutionMode::ConfirmWrite;
+            }
+
+            public function parameters(): array
+            {
+                return [];
+            }
+
+            public function validate(User $user, array $arguments, ?Chat $chat = null): AiToolValidationResult
+            {
+                return AiToolValidationResult::ok(['name' => 'X']);
+            }
+
+            public function execute(User $user, array $arguments): array
+            {
+                throw new RuntimeException('kaboom');
+            }
+        };
+
+        $registry = new AiToolRegistry;
+        $registry->register($failingTool);
+        $this->app->instance(AiToolRegistry::class, $registry);
+
+        $payload = app(ConfirmToolCallService::class)->execute($user, $message->id);
+
+        $this->assertSame('failed', $payload['status']);
+        $this->assertContains('kaboom', $payload['validation_errors']);
+        $this->assertSame(0, Task::count());
+
+        $message->refresh();
+        $this->assertSame('failed', $message->tool_call['status']);
+        $this->assertContains('kaboom', $message->tool_call['validation_errors']);
+    }
+
+    public function test_tool_execute_partial_writes_roll_back_on_failure(): void
+    {
+        $user = User::factory()->create();
+        [$message] = $this->pendingMessage($user);
+        $chatsBefore = Chat::count();
+
+        // A tool that writes a row WITHOUT its own transaction and then throws.
+        // ConfirmToolCallService must wrap execute() in a savepoint so the
+        // partial write rolls back, while still recording the failed status.
+        $writingThenThrowingTool = new class implements AiTool
+        {
+            public function name(): string
+            {
+                return 'create_task';
+            }
+
+            public function description(): string
+            {
+                return 'fake';
+            }
+
+            public function executionMode(): AiToolExecutionMode
+            {
+                return AiToolExecutionMode::ConfirmWrite;
+            }
+
+            public function parameters(): array
+            {
+                return [];
+            }
+
+            public function validate(User $user, array $arguments, ?Chat $chat = null): AiToolValidationResult
+            {
+                return AiToolValidationResult::ok([]);
+            }
+
+            public function execute(User $user, array $arguments): array
+            {
+                Chat::create(['user_id' => $user->id]); // partial write, no own transaction
+                throw new RuntimeException('kaboom after write');
+            }
+        };
+
+        $registry = new AiToolRegistry;
+        $registry->register($writingThenThrowingTool);
+        $this->app->instance(AiToolRegistry::class, $registry);
+
+        $payload = app(ConfirmToolCallService::class)->execute($user, $message->id);
+
+        $this->assertSame('failed', $payload['status']);
+        $this->assertContains('kaboom after write', $payload['validation_errors']);
+        $this->assertSame($chatsBefore, Chat::count(), "The tool's partial write must roll back.");
+
+        $message->refresh();
+        $this->assertSame('failed', $message->tool_call['status']);
     }
 
     public function test_confirm_coerces_string_ids_from_form_inputs(): void

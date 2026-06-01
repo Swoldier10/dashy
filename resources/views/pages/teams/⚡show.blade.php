@@ -531,7 +531,7 @@ new #[Title('Team')] class extends Component
         </div>
 
         {{-- Pending invitations --}}
-        @if ($isOwner && $this->pendingInvitations->isNotEmpty())
+        @if ($isOwner && ! $team->personal_team && $this->pendingInvitations->isNotEmpty())
             <div class="mt-6">
                 <p class="text-xs font-medium uppercase tracking-wide mb-3" style="color: var(--ink-muted);">
                     {{ __('Pending invitations') }}
@@ -609,7 +609,7 @@ new #[Title('Team')] class extends Component
         @endif
 
         {{-- Invite by email --}}
-        @if ($isOwner)
+        @if ($isOwner && ! $team->personal_team)
             <form wire:submit="invite" class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div class="flex-1">
                     <x-dashy.input

@@ -69,4 +69,29 @@ class AcceptAsNewUserTest extends TestCase
             'accepted_at' => null,
         ]);
     }
+
+    public function test_stale_invitation_bounces_to_invite_page_on_register(): void
+    {
+        $team = Team::factory()->create();
+        $token = 'stale-register-token';
+        TeamInvitation::factory()->expired()->create([
+            'team_id' => $team->id,
+            'email' => 'late@example.com',
+            'token_hash' => hash('sha256', $token),
+            'role' => TeamRole::Member,
+        ]);
+
+        session(['invitation.pending_token' => $token]);
+
+        $newUser = User::factory()->create(['email' => 'late@example.com']);
+        event(new Registered($newUser));
+
+        // Not joined (expired between click and register) — bounced back to the
+        // invite page so the new user sees why instead of landing confused.
+        $this->assertDatabaseMissing('team_user', [
+            'team_id' => $team->id,
+            'user_id' => $newUser->id,
+        ]);
+        $this->assertSame(route('invite.show', $token), session('url.intended'));
+    }
 }

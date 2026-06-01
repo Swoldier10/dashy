@@ -52,4 +52,28 @@ class ShowPageTest extends TestCase
             ->get(route('teams.show', ['team' => 999_999]))
             ->assertNotFound();
     }
+
+    public function test_invite_form_is_hidden_on_a_personal_team(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->personal()->create();
+        $team->members()->attach($owner->id, ['role' => TeamRole::Owner->value]);
+
+        $this->actingAs($owner)
+            ->get(route('teams.show', $team))
+            ->assertOk()
+            ->assertDontSeeText('Invite member by email');
+    }
+
+    public function test_invite_form_is_shown_to_owner_on_a_shared_team(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(); // shared (personal_team = false)
+        $team->members()->attach($owner->id, ['role' => TeamRole::Owner->value]);
+
+        $this->actingAs($owner)
+            ->get(route('teams.show', $team))
+            ->assertOk()
+            ->assertSeeText('Invite member by email');
+    }
 }

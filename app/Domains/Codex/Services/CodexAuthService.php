@@ -99,7 +99,15 @@ final class CodexAuthService
         }
 
         if ($response->failed()) {
-            throw new CodexAuthException('Codex device authorisation failed.');
+            $errorBody = $response->json();
+            $error = is_array($errorBody) && is_string($errorBody['error'] ?? null) ? $errorBody['error'] : null;
+
+            throw new CodexAuthException(match ($error) {
+                'access_denied' => __('You denied the Codex authorisation request. Start again to retry.'),
+                'expired_token' => __('The Codex sign-in code expired. Start again to get a new code.'),
+                'slow_down' => __('Codex asked us to slow down. Please wait a moment and try again.'),
+                default => __('Codex device authorisation failed.'),
+            });
         }
 
         $body = $response->json();
@@ -153,6 +161,15 @@ final class CodexAuthService
         $tokenSet = CodexTokenSet::fromTokenResponse($this->arrayBody($response));
 
         return DB::transaction(fn () => $this->updateConnection->execute($connection, $tokenSet->toAttributes()));
+    }
+
+    /**
+     * Drop a connection whose token the API has rejected (e.g. a 401 during a
+     * chat stream), so the UI flips back to the "Connect Codex" prompt.
+     */
+    public function forget(CodexConnection $connection): void
+    {
+        DB::transaction(fn () => $this->deleteConnection->execute($connection));
     }
 
     private function exchangeCodeForToken(string $authorizationCode, string $codeVerifier): CodexTokenSet
