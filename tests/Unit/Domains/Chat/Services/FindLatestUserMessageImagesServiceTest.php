@@ -51,6 +51,56 @@ class FindLatestUserMessageImagesServiceTest extends TestCase
         $this->assertSame('a/second.png', $images[1]['path']);
     }
 
+    public function test_scans_back_to_image_message_when_latest_user_message_is_text_only(): void
+    {
+        $chat = $this->chatForUser();
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'create a task based on this',
+            'attachments' => [['type' => 'image', 'path' => 'a/shot.png', 'url' => 'https://t/shot.png', 'mime' => 'image/png', 'name' => 'shot.png']],
+        ]);
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'assistant',
+            'content' => 'Which project?',
+        ]);
+        // Latest user message is a plain text reply with no attachments (null).
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'Folienzuschnitt',
+        ]);
+
+        $images = $this->service()->execute($chat);
+
+        $this->assertCount(1, $images);
+        $this->assertSame('a/shot.png', $images[0]['path']);
+    }
+
+    public function test_skips_an_intermediate_empty_attachments_message(): void
+    {
+        $chat = $this->chatForUser();
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'with image',
+            'attachments' => [['type' => 'image', 'path' => 'a/img.png', 'url' => 'https://t/img.png', 'mime' => 'image/png', 'name' => 'img.png']],
+        ]);
+        // A later user message persisted with an explicit empty array (non-null).
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'no attachment here',
+            'attachments' => [],
+        ]);
+
+        $images = $this->service()->execute($chat);
+
+        $this->assertCount(1, $images);
+        $this->assertSame('a/img.png', $images[0]['path']);
+    }
+
     public function test_filters_out_non_image_and_malformed_attachments(): void
     {
         $chat = $this->chatForUser();

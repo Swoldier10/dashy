@@ -6,10 +6,11 @@ use App\Domains\Chat\Actions\FindLatestUserMessageAttachmentsAction;
 use App\Domains\Chat\Models\Chat;
 
 /**
- * Image attachments carried by the most recent user message in a chat — the
- * message that prompted the current tool call. AI write-tools snapshot these
- * at validation time so an attached image survives intermediate user messages
- * between preview and confirm.
+ * Image attachments carried by the most recent user message that has any —
+ * the message that prompted the current tool call. AI write-tools snapshot
+ * these at validation time so an attached image survives intermediate user
+ * messages (a text-only reply between the upload and the tool call, or a
+ * message between preview and confirm).
  */
 final class FindLatestUserMessageImagesService
 {

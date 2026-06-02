@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domains\Chat\Ai\Tools;
 
 use App\Domains\Chat\Ai\Tools\CreateTaskTool;
+use App\Domains\Chat\Models\Chat;
+use App\Domains\Chat\Models\Message;
 use App\Domains\Projects\Enums\ProjectStatusCategory;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Models\ProjectStatus;
@@ -159,8 +161,8 @@ class CreateTaskToolTest extends TestCase
         [$user, $project] = $this->setupAccessibleProject();
 
         // Create a chat with a NEW image — different from the snapshot in args.
-        $chat = \App\Domains\Chat\Models\Chat::create(['user_id' => $user->id]);
-        \App\Domains\Chat\Models\Message::create([
+        $chat = Chat::create(['user_id' => $user->id]);
+        Message::create([
             'chat_id' => $chat->id,
             'role' => 'user',
             'content' => 'new image',
@@ -187,6 +189,50 @@ class CreateTaskToolTest extends TestCase
         $this->assertTrue($result->valid, implode(', ', $result->errors));
         $this->assertSame(
             'chat-attachments/x/original.png',
+            $result->normalized['image_attachments'][0]['path'],
+        );
+    }
+
+    public function test_validate_snapshots_image_from_earlier_user_message_when_latest_has_none(): void
+    {
+        [$user, $project] = $this->setupAccessibleProject();
+
+        // The image arrives first, THEN a text-only disambiguation reply ("which
+        // project?" → "Folienzuschnitt"). The create_task call fires after the
+        // text-only reply — the image must still be snapshotted.
+        $chat = Chat::create(['user_id' => $user->id]);
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'create a task based on this',
+            'attachments' => [[
+                'type' => 'image',
+                'path' => 'chat-attachments/x/screenshot.png',
+                'url' => 'https://test/screenshot.png',
+                'mime' => 'image/png',
+                'name' => 'screenshot.png',
+            ]],
+        ]);
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'assistant',
+            'content' => 'Which project?',
+        ]);
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'Folienzuschnitt',
+        ]);
+
+        $result = app(CreateTaskTool::class)->validate($user, [
+            'project_id' => $project->id,
+            'name' => 'T',
+        ], $chat);
+
+        $this->assertTrue($result->valid, implode(', ', $result->errors));
+        $this->assertCount(1, $result->normalized['image_attachments']);
+        $this->assertSame(
+            'chat-attachments/x/screenshot.png',
             $result->normalized['image_attachments'][0]['path'],
         );
     }

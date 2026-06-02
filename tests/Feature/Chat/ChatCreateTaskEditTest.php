@@ -120,4 +120,56 @@ class ChatCreateTaskEditTest extends TestCase
         $this->assertNotNull($task);
         $this->assertSame($active->id, $task->project_status_id);
     }
+
+    public function test_image_from_an_earlier_message_attaches_to_the_created_task(): void
+    {
+        ['user' => $user, 'project' => $project, 'notStarted' => $notStarted, 'chat' => $chat] = $this->seedScenario();
+        $this->actingAs($user);
+
+        // The image arrives first, then a text-only disambiguation reply
+        // ("which project?" → "Folienzuschnitt"). The create_task call fires
+        // after the text-only reply — the image must still reach the task.
+        Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'user',
+            'content' => 'create a task based on this',
+            'attachments' => [[
+                'type' => 'image',
+                'path' => 'chat-attachments/x/screenshot.png',
+                'url' => 'https://test/screenshot.png',
+                'mime' => 'image/png',
+                'name' => 'screenshot.png',
+            ]],
+        ]);
+        Message::create(['chat_id' => $chat->id, 'role' => 'user', 'content' => 'Folienzuschnitt']);
+
+        // A pending create_task whose arguments OMIT image_attachments — the
+        // state before the snapshot ran. Confirming re-validates and snapshots.
+        $pending = Message::create([
+            'chat_id' => $chat->id,
+            'role' => 'assistant',
+            'content' => '',
+            'tool_call' => [
+                'tool_call_id' => 'fc_img',
+                'name' => 'create_task',
+                'arguments' => [
+                    'project_id' => $project->id,
+                    'name' => 'Aufgabe mit Bild',
+                    'status_id' => $notStarted->id,
+                    'priority' => 'normal',
+                    'start_date' => '2026-06-02',
+                    'assignee_user_ids' => [$user->id],
+                ],
+                'status' => 'pending',
+            ],
+        ]);
+
+        Livewire::test('chat.chat-panel', ['chat' => $chat->id])
+            ->call('confirmToolCall', $pending->id);
+
+        $task = Task::where('name', 'Aufgabe mit Bild')->first();
+        $this->assertNotNull($task);
+        $this->assertNotNull($task->attachments);
+        $this->assertSame('chat-attachments/x/screenshot.png', $task->attachments[0]['path']);
+    }
 }

@@ -9,6 +9,7 @@ use App\Domains\Tasks\Actions\CreateTaskAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Tasks\Support\TaskAttachmentNormalizer;
 use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -100,20 +101,6 @@ final class CreateTaskService
      */
     private function normaliseAttachments(array $attachments): array
     {
-        return array_values(array_filter(array_map(static function (array $att): ?array {
-            $path = $att['path'] ?? null;
-            $url = $att['url'] ?? null;
-            if (! is_string($path) || $path === '' || ! is_string($url) || $url === '') {
-                return null;
-            }
-
-            return [
-                'type' => 'image',
-                'path' => $path,
-                'url' => $url,
-                'mime' => is_string($att['mime'] ?? null) ? $att['mime'] : 'image/png',
-                'name' => is_string($att['name'] ?? null) ? $att['name'] : basename($path),
-            ];
-        }, $attachments)));
+        return TaskAttachmentNormalizer::normalise($attachments);
     }
 }

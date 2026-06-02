@@ -234,10 +234,11 @@ final class CreateTaskTool implements AiTool, PresentsToolCard
     }
 
     /**
-     * Pull image attachments from the most recent user message in the chat —
-     * the message that prompted the LLM to emit this tool call. Snapshotted at
-     * validation time so they survive intermediate user messages between
-     * preview and confirm. The DB read lives in a Chat-domain service.
+     * Pull image attachments from the most recent user message that carries any
+     * — the message that prompted the LLM to emit this tool call. Snapshotted at
+     * validation time so they survive intermediate text-only user messages (the
+     * project-disambiguation reply, or a message between preview and confirm).
+     * The DB read lives in a Chat-domain service.
      *
      * @return array<int, array<string, mixed>>
      */

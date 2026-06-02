@@ -177,11 +177,12 @@ final class CreateProjectTool implements AiTool, PresentsToolCard
     }
 
     /**
-     * Pull the first image attachment from the most recent user message in the
-     * chat — the message that prompted the LLM to emit this tool call. The
-     * project logo is singular, so we take only the first image. Attachments
-     * are snapshotted at validation time so they survive intermediate user
-     * messages between preview and confirm.
+     * Pull the first image attachment from the most recent user message that
+     * carries any — the message that prompted the LLM to emit this tool call.
+     * The project logo is singular, so we take only the first image. Attachments
+     * are snapshotted at validation time so they survive intermediate text-only
+     * user messages (a disambiguation reply, or a message between preview and
+     * confirm).
      *
      * @return array{path:string, url:string, mime:?string, name:?string}|null
      */

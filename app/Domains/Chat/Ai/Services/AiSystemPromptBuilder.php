@@ -137,6 +137,17 @@ STYLE — Professional, Scrum-style task content:
   - assignee_user_ids: [current user's id]
 - Match team/project/member names case-insensitively; partial match is OK only
   if unambiguous within the user's CONTEXT.
+- If the user attached an image in the conversation, it is automatically
+  attached to the created task; do not ask for confirmation and do not claim
+  you can't attach images.
+
+Rules for attach_image_to_task:
+- When the user asks to add or attach an image / screenshot to a task that
+  ALREADY exists, call `attach_image_to_task` with the task_id. The image is
+  taken from the conversation automatically — you do NOT pass file paths, and
+  you CAN do this. Never tell the user you can't attach images.
+- If you don't know the task_id, call `list_tasks` (or get_task) first; never
+  guess an id.
 
 Rules for create_project:
 - Call it ONLY when the user clearly intends to create a project AND the team

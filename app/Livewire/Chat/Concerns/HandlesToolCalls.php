@@ -196,6 +196,7 @@ trait HandlesToolCalls
             'update_task_name', 'update_task_description', 'update_task_priority',
             'update_task_dates' => __('Task updated.'),
             'move_task_to_status' => __('Task moved.'),
+            'attach_image_to_task' => __('Image attached.'),
             'assign_task' => __('Assignee added.'),
             'unassign_task' => __('Assignee removed.'),
             'archive_task' => __('Task archived.'),
