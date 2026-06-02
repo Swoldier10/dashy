@@ -8,11 +8,12 @@
 @if ($task->assignees->isEmpty())
     {{-- intentionally empty so the row stays clean --}}
 @else
-<x-dashy.dropdown align="end" position="bottom">
+{{-- close-on-click-inside is off: assigning is a multi-toggle flow — the
+     menu stays open while checking/unchecking members (outside/escape closes). --}}
+<x-dashy.dropdown align="end" position="bottom" :close-on-click-inside="false">
     <x-slot:trigger>
         <button
             type="button"
-            wire:click.stop
             class="rounded-md transition focus:outline-none focus-visible:ring-2"
             style="--tw-ring-color: var(--blue);"
             aria-label="{{ __('Assignees') }}"

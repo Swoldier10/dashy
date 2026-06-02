@@ -13,4 +13,5 @@
     'showProjectPill' => false,
     'showStatusPill' => true,
     'showCheckbox' => true,
+    'selectedTaskIds' => $selectedTaskIds ?? [],
 ])

@@ -26,7 +26,6 @@
         @if ($plainText)
             <button
                 type="button"
-                wire:click.stop
                 class="inline-flex h-5 items-center text-[11px] leading-4 transition focus:outline-none focus-visible:underline hover:underline"
                 style="
                     color: {{ $isOverdue ? 'var(--state-error)' : ($task->end_date ? 'var(--ink-muted)' : 'var(--ink-dim)') }};
@@ -38,7 +37,6 @@
         @else
             <button
                 type="button"
-                wire:click.stop
                 class="inline-flex h-5 items-center gap-1 rounded px-1.5 text-[11px] leading-4 transition focus:outline-none focus-visible:ring-2"
                 style="
                     color: {{ $isOverdue ? 'var(--state-error)' : ($task->end_date ? 'var(--ink)' : 'var(--ink-dim)') }};
@@ -59,29 +57,29 @@
         </div>
 
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $today }}')"
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $today }}')"
             data-test="date-quick-today-{{ $task->id }}">
             <span class="text-sm" style="color: var(--ink);">{{ __('Today') }}</span>
         </x-dashy.menu.item>
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $tomorrow }}')"
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $tomorrow }}')"
             data-test="date-quick-tomorrow-{{ $task->id }}">
             <span class="text-sm" style="color: var(--ink);">{{ __('Tomorrow') }}</span>
         </x-dashy.menu.item>
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $nextWeek }}')">
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $nextWeek }}')">
             <span class="text-sm" style="color: var(--ink);">{{ __('Next week') }}</span>
         </x-dashy.menu.item>
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $twoWeeks }}')">
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $twoWeeks }}')">
             <span class="text-sm" style="color: var(--ink);">{{ __('In 2 weeks') }}</span>
         </x-dashy.menu.item>
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $fourWeeks }}')">
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $fourWeeks }}')">
             <span class="text-sm" style="color: var(--ink);">{{ __('In 4 weeks') }}</span>
         </x-dashy.menu.item>
         <x-dashy.menu.item as="button" type="button"
-            wire:click.stop="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $eightWeeks }}')">
+            wire:click="updateDates({{ $task->id }}, '{{ $startStr ?? '' }}', '{{ $eightWeeks }}')">
             <span class="text-sm" style="color: var(--ink);">{{ __('In 8 weeks') }}</span>
         </x-dashy.menu.item>
 
@@ -98,7 +96,7 @@
         @if ($task->end_date)
             <x-dashy.menu.separator />
             <x-dashy.menu.item as="button" type="button"
-                wire:click.stop="updateDates({{ $task->id }}, null, null)"
+                wire:click="updateDates({{ $task->id }}, null, null)"
                 data-test="date-clear-{{ $task->id }}">
                 <span class="text-sm" style="color: var(--state-error);">{{ __('Clear dates') }}</span>
             </x-dashy.menu.item>

@@ -11,18 +11,22 @@
      * @var bool $showCheckbox
      * @var bool $showDragHandle
      * @var bool $plainMeta  When true, project / date / priority render as inline plain text (no badge backgrounds).
+     * @var array<int,int> $selectedTaskIds  Bulk-selection ids (per-project page only; absent on the aggregator).
      */
     $showProjectPill = $showProjectPill ?? false;
     $showStatusPill = $showStatusPill ?? true;
     $showCheckbox = $showCheckbox ?? true;
     $showDragHandle = $showDragHandle ?? true;
     $plainMeta = $plainMeta ?? false;
+    $selectedTaskIds = $selectedTaskIds ?? [];
 
     $isComplete = $task->status && in_array(
         $task->status->category,
         [ProjectStatusCategory::Done, ProjectStatusCategory::Closed],
         true
     );
+
+    $isSelected = in_array($task->id, $selectedTaskIds, true);
 
     $projectColorVar = $task->project ? ProjectColor::for($task->project) : '--ink-dim';
 @endphp
@@ -52,17 +56,18 @@
         </button>
     @endif
 
-    {{-- Checkbox — wrapped in a 20px box so the 18px checkbox shares the row's
-         canonical h-5 cell size and lines up with every other cell. --}}
+    {{-- Checkbox — selects the task for bulk actions. Wrapped in a 20px box so
+         the 18px checkbox shares the row's canonical h-5 cell size and lines
+         up with every other cell. --}}
     @if ($showCheckbox)
         <div class="flex h-5 shrink-0 items-center">
             <button
                 type="button"
-                wire:click.stop="toggleComplete({{ $task->id }})"
+                wire:click.stop="toggleTaskSelection({{ $task->id }})"
                 class="dashy-task-checkbox cursor-pointer"
-                aria-checked="{{ $isComplete ? 'true' : 'false' }}"
+                aria-checked="{{ $isSelected ? 'true' : 'false' }}"
                 role="checkbox"
-                aria-label="{{ $isComplete ? __('Mark as not done') : __('Mark as done') }}"
+                aria-label="{{ $isSelected ? __('Deselect task') : __('Select task') }}"
                 data-test="task-checkbox-{{ $task->id }}"
             >
                 <x-dashy.icon name="check" class="size-3" />

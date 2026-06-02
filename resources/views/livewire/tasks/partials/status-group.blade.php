@@ -91,6 +91,7 @@
                     'task' => $task,
                     'teamMembers' => $teamMembers,
                     'allStatuses' => $allStatuses,
+                    'selectedTaskIds' => $selectedTaskIds ?? [],
                 ])
             @endforeach
         </div>

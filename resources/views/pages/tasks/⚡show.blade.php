@@ -8,6 +8,11 @@ use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Services\ArchiveTaskService;
 use App\Domains\Tasks\Services\AssignTaskService;
+use App\Domains\Tasks\Services\BulkArchiveTasksService;
+use App\Domains\Tasks\Services\BulkDeleteTasksService;
+use App\Domains\Tasks\Services\BulkMoveTasksService;
+use App\Domains\Tasks\Services\BulkUpdateTaskDueDateService;
+use App\Domains\Tasks\Services\BulkUpdateTaskPriorityService;
 use App\Domains\Tasks\Services\CreateTaskService;
 use App\Domains\Tasks\Services\DeleteTaskService;
 use App\Domains\Tasks\Services\FindTaskService;
@@ -16,7 +21,6 @@ use App\Domains\Tasks\Services\ListTasksForProjectService;
 use App\Domains\Tasks\Services\MoveTaskService;
 use App\Domains\Tasks\Services\ReorderTasksService;
 use App\Domains\Tasks\Services\TaskExistsInProjectService;
-use App\Domains\Tasks\Services\ToggleTaskCompleteService;
 use App\Domains\Tasks\Services\UnarchiveTaskService;
 use App\Domains\Tasks\Services\UnassignTaskService;
 use App\Domains\Tasks\Services\UpdateTaskDatesService;
@@ -51,6 +55,12 @@ new #[Title('Tasks')] class extends Component
 
     /** @var array<int,int> */
     public array $collapsedStatusIds = [];
+
+    /** Task ids selected via the row checkboxes for bulk actions. @var array<int,int> */
+    public array $selectedTaskIds = [];
+
+    /** Bound by the bulk toolbar's custom due-date picker. */
+    public ?string $bulkDueDateInput = null;
 
     // Create-task drawer form state
     public bool $createOpen = false;
@@ -182,9 +192,159 @@ new #[Title('Tasks')] class extends Component
             ->all();
     }
 
-    public function toggleComplete(int $taskId, ToggleTaskCompleteService $svc): void
+    public function toggleTaskSelection(int $taskId): void
     {
-        $svc->execute(Auth::user(), $taskId);
+        $idx = array_search($taskId, $this->selectedTaskIds, true);
+
+        if ($idx === false) {
+            $this->selectedTaskIds[] = $taskId;
+
+            return;
+        }
+
+        unset($this->selectedTaskIds[$idx]);
+        $this->selectedTaskIds = array_values($this->selectedTaskIds);
+    }
+
+    public function clearSelection(): void
+    {
+        $this->selectedTaskIds = [];
+    }
+
+    /** Whether every currently visible task is in the bulk selection. */
+    #[Computed]
+    public function allVisibleSelected(): bool
+    {
+        $visible = $this->visibleTaskIds();
+
+        return $visible !== [] && array_diff($visible, $this->selectedTaskIds) === [];
+    }
+
+    public function toggleSelectAll(): void
+    {
+        $visible = $this->visibleTaskIds();
+
+        if ($visible === []) {
+            return;
+        }
+
+        if (array_diff($visible, $this->selectedTaskIds) === []) {
+            $this->clearSelection();
+
+            return;
+        }
+
+        $this->selectedTaskIds = $visible;
+    }
+
+    /** @return list<int> */
+    private function visibleTaskIds(): array
+    {
+        return collect($this->tasksByStatusId)
+            ->flatMap(fn ($tasks) => $tasks->pluck('id')->all())
+            ->all();
+    }
+
+    /**
+     * Selection filtered to tasks currently visible on the page, so stale
+     * or forged ids never reach the bulk services.
+     *
+     * @return list<int>
+     */
+    private function selectedVisibleIds(): array
+    {
+        return array_values(array_intersect($this->selectedTaskIds, $this->visibleTaskIds()));
+    }
+
+    public function bulkSetStatus(int $statusId, BulkMoveTasksService $svc): void
+    {
+        $ids = $this->selectedVisibleIds();
+        if ($ids === []) {
+            return;
+        }
+
+        $svc->execute(Auth::user(), $ids, $statusId);
+
+        $this->clearSelection();
+        $this->toast('success', __('Status updated.'));
+        $this->dispatch('task-list-changed');
+    }
+
+    public function bulkSetPriority(string $priority, BulkUpdateTaskPriorityService $svc): void
+    {
+        $ids = $this->selectedVisibleIds();
+        if ($ids === []) {
+            return;
+        }
+
+        $svc->execute(Auth::user(), $ids, $priority);
+
+        $this->clearSelection();
+        $this->toast('success', __('Priority updated.'));
+        $this->dispatch('task-list-changed');
+    }
+
+    public function bulkSetDueDate(?string $dueDate, BulkUpdateTaskDueDateService $svc): void
+    {
+        $ids = $this->selectedVisibleIds();
+        if ($ids === []) {
+            return;
+        }
+
+        $svc->execute(Auth::user(), $ids, $dueDate);
+
+        $this->clearSelection();
+        $this->toast('success', $dueDate === null ? __('Dates cleared.') : __('Due date updated.'));
+        $this->dispatch('task-list-changed');
+    }
+
+    public function applyBulkCustomDueDate(BulkUpdateTaskDueDateService $svc): void
+    {
+        if ($this->bulkDueDateInput === null || $this->bulkDueDateInput === '') {
+            return;
+        }
+
+        $this->bulkSetDueDate($this->bulkDueDateInput, $svc);
+        $this->bulkDueDateInput = null;
+    }
+
+    public function bulkArchive(BulkArchiveTasksService $svc): void
+    {
+        $ids = $this->selectedVisibleIds();
+        if ($ids === []) {
+            return;
+        }
+
+        $svc->execute(Auth::user(), $ids);
+
+        $this->clearSelection();
+        $this->toast('success', __('Tasks archived.'));
+        $this->dispatch('task-list-changed');
+    }
+
+    public function confirmBulkDelete(): void
+    {
+        if ($this->selectedVisibleIds() === []) {
+            return;
+        }
+
+        $this->openModal('confirm-bulk-delete');
+    }
+
+    public function bulkDelete(BulkDeleteTasksService $svc): void
+    {
+        $ids = $this->selectedVisibleIds();
+        if ($ids === []) {
+            $this->closeModal('confirm-bulk-delete');
+
+            return;
+        }
+
+        $svc->execute(Auth::user(), $ids);
+
+        $this->clearSelection();
+        $this->closeModal('confirm-bulk-delete');
+        $this->toast('success', __('Tasks deleted.'));
         $this->dispatch('task-list-changed');
     }
 
@@ -331,6 +491,24 @@ new #[Title('Tasks')] class extends Component
         $this->showArchived = ! $this->showArchived;
     }
 
+    /**
+     * Keep "selection ⊆ visible tasks" as a render-time invariant: selected
+     * ids that left the visible list this request (deleted, archived out,
+     * hidden by the archived toggle) leave the selection before the toolbar
+     * count paints. A lifecycle hook — self-dispatched events like
+     * task-list-changed only reach listeners on the *next* browser round
+     * trip, so an event-driven prune would lag one request behind.
+     */
+    public function rendering(mixed $view, mixed $data): void
+    {
+        if ($this->selectedTaskIds === []) {
+            return;
+        }
+
+        unset($this->tasksByStatusId); // Bust the computed memo — visibility may have changed this request.
+        $this->selectedTaskIds = array_values(array_intersect($this->selectedTaskIds, $this->visibleTaskIds()));
+    }
+
     public function archiveTask(int $taskId, ArchiveTaskService $svc): void
     {
         $svc->execute(Auth::user(), $taskId);
@@ -364,7 +542,8 @@ new #[Title('Tasks')] class extends Component
     #[On('task-list-changed')]
     public function refresh(): void
     {
-        // Empty body — re-renders so computeds re-evaluate.
+        // Empty body — re-renders so computeds re-evaluate. The rendering()
+        // hook prunes the bulk selection on every pass.
     }
 
     #[On('time-entries-updated')]
@@ -420,6 +599,28 @@ new #[Title('Tasks')] class extends Component
                 'flex flex-col gap-3',
                 'hidden' => $activeTab !== 'tasks',
             ])>
+                {{-- Global select-all for bulk actions (hidden when the list is empty). --}}
+                @if ($this->tasksByStatusId !== [])
+                    @php $allSelected = $this->allVisibleSelected; @endphp
+                    <button
+                        type="button"
+                        wire:click="toggleSelectAll"
+                        class="inline-flex min-h-[44px] cursor-pointer items-center gap-2 self-start px-1 text-xs transition md:min-h-0 md:py-1 focus:outline-none focus-visible:ring-2"
+                        style="color: var(--ink-muted); --tw-ring-color: var(--blue);"
+                        onmouseover="this.style.color='var(--ink)';"
+                        onmouseout="this.style.color='var(--ink-muted)';"
+                        role="checkbox"
+                        aria-checked="{{ $allSelected ? 'true' : 'false' }}"
+                        aria-label="{{ $allSelected ? __('Deselect all tasks') : __('Select all tasks') }}"
+                        data-test="select-all-tasks"
+                    >
+                        <span class="dashy-task-checkbox" aria-checked="{{ $allSelected ? 'true' : 'false' }}" aria-hidden="true">
+                            <x-dashy.icon name="check" class="size-3" />
+                        </span>
+                        <span>{{ __('Select all') }}</span>
+                    </button>
+                @endif
+
                 @forelse ($this->statuses as $status)
                     @include('livewire.tasks.partials.status-group', [
                         'status' => $status,
@@ -428,6 +629,7 @@ new #[Title('Tasks')] class extends Component
                         'projectId' => $this->project->id,
                         'teamMembers' => $this->teamMembers,
                         'allStatuses' => $this->statuses,
+                        'selectedTaskIds' => $selectedTaskIds,
                     ])
                 @empty
                     @include('livewire.tasks.partials.no-statuses-empty-state', ['project' => $this->project])
@@ -442,6 +644,32 @@ new #[Title('Tasks')] class extends Component
             </div>
         </div>
     </div>
+
+    @include('livewire.tasks.partials.bulk-actions-toolbar', [
+        'selectedCount' => count($selectedTaskIds),
+        'statuses' => $this->statuses,
+    ])
+
+    {{-- Bulk-delete confirmation — same modal pattern as the sidebar's
+         delete-project / delete-chat confirms. --}}
+    <x-dashy.modal name="confirm-bulk-delete" focusable class="max-w-md">
+        <div class="space-y-4">
+            <x-dashy.heading size="lg">{{ __('Delete selected tasks?') }}</x-dashy.heading>
+            <x-dashy.subheading>
+                {{ __('This permanently deletes the selected tasks. It cannot be undone.') }}
+            </x-dashy.subheading>
+            <div class="flex justify-end gap-2">
+                <x-dashy.modal.close>
+                    <x-dashy.button type="button" variant="filled" data-test="cancel-bulk-delete">
+                        {{ __('Cancel') }}
+                    </x-dashy.button>
+                </x-dashy.modal.close>
+                <x-dashy.button variant="danger" wire:click="bulkDelete" data-test="confirm-bulk-delete">
+                    {{ __('Delete') }}
+                </x-dashy.button>
+            </div>
+        </div>
+    </x-dashy.modal>
 
     <livewire:tasks.task-detail-drawer :taskId="$initialTaskId" />
     @include('livewire.tasks.partials.task-create-drawer')
