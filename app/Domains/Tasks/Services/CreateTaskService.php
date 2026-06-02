@@ -8,6 +8,8 @@ use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\CreateTaskAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
 use App\Domains\Tasks\Enums\TaskPriority;
+use App\Domains\Tasks\Events\TaskAssigned;
+use App\Domains\Tasks\Events\TaskCreatedInProject;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Support\TaskAttachmentNormalizer;
 use App\Domains\Teams\Services\ListTeamMemberIdsService;
@@ -59,8 +61,9 @@ final class CreateTaskService
             $validated['assignee_user_ids'] ?? [],
         )));
 
+        $memberIds = $this->listTeamMemberIds->execute($project->team);
+
         if ($assigneeIds !== []) {
-            $memberIds = $this->listTeamMemberIds->execute($project->team);
             $invalid = array_diff($assigneeIds, $memberIds);
             if ($invalid !== []) {
                 throw ValidationException::withMessages([
@@ -71,7 +74,7 @@ final class CreateTaskService
 
         $imageAttachments = $this->normaliseAttachments($validated['image_attachments'] ?? []);
 
-        return DB::transaction(function () use ($actor, $project, $validated, $statusId, $assigneeIds, $imageAttachments) {
+        return DB::transaction(function () use ($actor, $project, $validated, $statusId, $assigneeIds, $memberIds, $imageAttachments) {
             $position = $this->nextPosition->execute($project->id, $statusId);
 
             $task = $this->create->execute([
@@ -90,6 +93,17 @@ final class CreateTaskService
             foreach ($assigneeIds as $userId) {
                 $this->addAssignee->execute($task, $userId, $actor->id);
             }
+
+            // Snapshot events render from the loaded relation — no query.
+            $task->setRelation('project', $project);
+
+            DB::afterCommit(function () use ($task, $actor, $assigneeIds, $memberIds): void {
+                foreach ($assigneeIds as $userId) {
+                    event(TaskAssigned::fromTask($task, $actor, $userId));
+                }
+
+                event(TaskCreatedInProject::fromTask($task, $actor, $memberIds, $assigneeIds));
+            });
 
             return $task;
         });

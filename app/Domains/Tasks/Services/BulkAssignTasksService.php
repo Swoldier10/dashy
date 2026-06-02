@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Services;
 
 use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\FindTaskAction;
+use App\Domains\Tasks\Events\TaskAssigned;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
@@ -69,6 +70,7 @@ final class BulkAssignTasksService
                 }
 
                 $this->add->execute($task, $userId, $actor->id);
+                DB::afterCommit(fn () => event(TaskAssigned::fromTask($task, $actor, $userId)));
                 $assigned->push($task->refresh());
             }
 

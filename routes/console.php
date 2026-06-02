@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('chats:purge-expired')->daily();
 Schedule::command('teams:purge-expired-invitations')->daily();
 Schedule::command('google-calendar:sync-all')->everyFifteenMinutes();
+Schedule::command('notifications:dispatch-reminders')->everyFifteenMinutes();
+Schedule::command('notifications:purge-old')->daily();

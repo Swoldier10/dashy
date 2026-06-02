@@ -355,6 +355,67 @@ textarea.dashy-input {
     box-shadow: 0 0 0 3px rgba(var(--brand-danube-rgb), 0.22);
 }
 
+/* ---------- Notification settings matrix ---------- */
+.dashy-notif-head,
+.dashy-notif-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px 48px;
+    column-gap: 8px;
+    align-items: center;
+}
+.dashy-notif-head {
+    padding: 4px 0 8px;
+}
+.dashy-notif-head > span {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+}
+.dashy-notif-head > span:not(:first-child) {
+    text-align: center;
+}
+.dashy-notif-cat {
+    margin-top: 20px;
+    padding-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-dim);
+}
+.dashy-notif-row {
+    border-top: 1px solid var(--border);
+}
+.dashy-notif-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+/* Full-size tap target around the 17px checkbox (rule 10: ≥44px). */
+.dashy-notif-cell > label {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+}
+
+/* ---------- Notification bell badge ---------- */
+.dashy-notif-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    background-color: var(--state-error);
+    color: var(--surface);
+}
+
 /* ---------- Buttons ---------- */
 .dashy-btn-primary {
     display: flex;

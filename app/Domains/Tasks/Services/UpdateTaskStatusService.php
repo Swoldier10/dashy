@@ -6,6 +6,7 @@ use App\Domains\Projects\Services\AssertProjectStatusInProjectService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\MoveTaskToStatusAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
+use App\Domains\Tasks\Events\TaskStatusChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +33,26 @@ final class UpdateTaskStatusService
             return $task;
         }
 
-        return DB::transaction(function () use ($task, $projectStatusId) {
+        $oldStatusName = $task->status?->name;
+        $oldCategory = $task->status?->category?->value;
+        $assigneeIds = $task->assignees->pluck('id')->all();
+
+        return DB::transaction(function () use ($task, $actor, $projectStatusId, $oldStatusName, $oldCategory, $assigneeIds) {
             $position = $this->nextPosition->execute($task->project_id, $projectStatusId);
 
-            return $this->move->execute($task, $projectStatusId, $position);
+            $moved = $this->move->execute($task, $projectStatusId, $position)->refresh();
+
+            DB::afterCommit(fn () => event(TaskStatusChanged::fromTask(
+                $moved,
+                $actor,
+                $oldStatusName,
+                $oldCategory,
+                (string) $moved->status?->name,
+                (string) $moved->status?->category?->value,
+                $assigneeIds,
+            )));
+
+            return $moved;
         });
     }
 }

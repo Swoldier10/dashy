@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Services;
 
 use App\Domains\Tasks\Actions\AddTaskAssigneeAction;
 use App\Domains\Tasks\Actions\FindTaskAction;
+use App\Domains\Tasks\Events\TaskAssigned;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Teams\Services\ListTeamMemberIdsService;
 use App\Models\User;
@@ -33,7 +34,16 @@ final class AssignTaskService
             ]);
         }
 
-        DB::transaction(fn () => $this->add->execute($task, $userId, $actor->id));
+        // Already assigned: no write, no notification (mirrors the bulk service).
+        if ($task->assignees->contains('id', $userId)) {
+            return $task;
+        }
+
+        DB::transaction(function () use ($task, $actor, $userId): void {
+            $this->add->execute($task, $userId, $actor->id);
+
+            DB::afterCommit(fn () => event(TaskAssigned::fromTask($task, $actor, $userId)));
+        });
 
         return $task->refresh();
     }

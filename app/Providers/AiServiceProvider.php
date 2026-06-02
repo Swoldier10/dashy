@@ -29,6 +29,7 @@ use App\Domains\Chat\Ai\Tools\InviteTeamMemberTool;
 use App\Domains\Chat\Ai\Tools\ListEventsTool;
 use App\Domains\Chat\Ai\Tools\ListMemoriesTool;
 use App\Domains\Chat\Ai\Tools\ListMyOpenTasksTool;
+use App\Domains\Chat\Ai\Tools\ListNotificationsTool;
 use App\Domains\Chat\Ai\Tools\ListOverdueTasksTool;
 use App\Domains\Chat\Ai\Tools\ListProjectsTool;
 use App\Domains\Chat\Ai\Tools\ListTasksTool;
@@ -81,6 +82,7 @@ class AiServiceProvider extends ServiceProvider
             $registry->register($app->make(FindUserByEmailTool::class));
             $registry->register($app->make(GetTimeSummaryTool::class));
             $registry->register($app->make(SemanticSearchTool::class));
+            $registry->register($app->make(ListNotificationsTool::class));
 
             // Phase 1E — single-target confirm_write tools that let the assistant
             // mutate state through the existing card → Apply pattern.

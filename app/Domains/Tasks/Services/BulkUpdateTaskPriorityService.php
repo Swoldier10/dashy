@@ -5,6 +5,7 @@ namespace App\Domains\Tasks\Services;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
 use App\Domains\Tasks\Enums\TaskPriority;
+use App\Domains\Tasks\Events\TaskPriorityChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -51,7 +52,19 @@ final class BulkUpdateTaskPriorityService
                 $task = $this->find->execute($taskId);
                 Gate::forUser($actor)->authorize('update', $task);
 
-                $updated->push($this->update->execute($task, ['priority' => $validated['priority']]));
+                $oldPriority = $task->priority?->value;
+                $newPriority = (string) $validated['priority'];
+                $assigneeIds = $task->assignees->pluck('id')->all();
+
+                $changed = $this->update->execute($task, ['priority' => $newPriority]);
+
+                if ($newPriority !== $oldPriority) {
+                    DB::afterCommit(fn () => event(TaskPriorityChanged::fromTask(
+                        $changed, $actor, $oldPriority, $newPriority, $assigneeIds,
+                    )));
+                }
+
+                $updated->push($changed);
             }
 
             return $updated;

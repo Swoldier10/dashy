@@ -35,6 +35,8 @@
 
             <div class="flex-1"></div>
 
+            <livewire:notifications.bell variant="mobile" wire:key="bell-mobile" />
+
             <button
                 type="button"
                 x-on:click="$store.modals.open('settings')"
@@ -242,6 +244,9 @@
                 </a>
             @endforeach
         </nav>
+
+        {{-- Notification bell — same row styling as the primary nav. --}}
+        <livewire:notifications.bell variant="sidebar" wire:key="bell-sidebar" />
 
         {{-- + New chat — collapses to a square icon button in the rail. --}}
         @if ($isChatRoute)

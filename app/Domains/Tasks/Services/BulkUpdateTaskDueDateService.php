@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Services;
 
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
+use App\Domains\Tasks\Events\TaskDueDateChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -62,21 +63,42 @@ final class BulkUpdateTaskDueDateService
                 $task = $this->find->execute($taskId);
                 Gate::forUser($actor)->authorize('update', $task);
 
+                $oldEndDate = $task->end_date?->toIso8601String();
+                $assigneeIds = $task->assignees->pluck('id')->all();
+
                 if ($due === null) {
-                    $updated->push($this->update->execute($task, [
+                    $cleared = $this->update->execute($task, [
                         'start_date' => null,
                         'end_date' => null,
-                    ]));
+                    ]);
+
+                    if ($oldEndDate !== null) {
+                        DB::afterCommit(fn () => event(TaskDueDateChanged::fromTask(
+                            $cleared, $actor, $oldEndDate, null, $assigneeIds,
+                        )));
+                    }
+
+                    $updated->push($cleared);
 
                     continue;
                 }
 
                 $startConflicts = $task->start_date !== null && $task->start_date->gt($due);
 
-                $updated->push($this->update->execute($task, [
+                $changed = $this->update->execute($task, [
                     'start_date' => $startConflicts ? null : $task->start_date,
                     'end_date' => $due,
-                ]));
+                ]);
+
+                $newEndDate = $changed->end_date?->toIso8601String();
+
+                if ($newEndDate !== $oldEndDate) {
+                    DB::afterCommit(fn () => event(TaskDueDateChanged::fromTask(
+                        $changed, $actor, $oldEndDate, $newEndDate, $assigneeIds,
+                    )));
+                }
+
+                $updated->push($changed);
             }
 
             return $updated;

@@ -6,6 +6,7 @@ use App\Domains\Projects\Services\FindProjectStatusService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\MoveTaskToStatusAction;
 use App\Domains\Tasks\Actions\NextTaskPositionAction;
+use App\Domains\Tasks\Events\TaskStatusChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -71,8 +72,24 @@ final class BulkMoveTasksService
                     continue;
                 }
 
+                $oldStatusName = $task->status?->name;
+                $oldCategory = $task->status?->category?->value;
+                $assigneeIds = $task->assignees->pluck('id')->all();
+
                 $position = $this->nextPosition->execute($task->project_id, $targetStatusId);
-                $moved->push($this->move->execute($task, $targetStatusId, $position));
+                $movedTask = $this->move->execute($task, $targetStatusId, $position);
+
+                DB::afterCommit(fn () => event(TaskStatusChanged::fromTask(
+                    $movedTask,
+                    $actor,
+                    $oldStatusName,
+                    $oldCategory,
+                    (string) $targetStatus->name,
+                    (string) $targetStatus->category?->value,
+                    $assigneeIds,
+                )));
+
+                $moved->push($movedTask);
             }
 
             return $moved;

@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Services;
 
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
+use App\Domains\Tasks\Events\TaskAttachmentAdded;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Support\TaskAttachmentNormalizer;
 use App\Models\User;
@@ -74,7 +75,17 @@ final class AddTaskAttachmentsService
             return ['task_id' => $task->id, 'attached_count' => 0, 'task' => $task];
         }
 
-        $task = DB::transaction(fn (): Task => $this->update->execute($task, ['attachments' => $merged]));
+        $assigneeIds = $task->assignees->pluck('id')->all();
+
+        $task = DB::transaction(function () use ($task, $actor, $merged, $attachedCount, $assigneeIds): Task {
+            $updated = $this->update->execute($task, ['attachments' => $merged]);
+
+            DB::afterCommit(fn () => event(TaskAttachmentAdded::fromTask(
+                $updated, $actor, $attachedCount, $assigneeIds,
+            )));
+
+            return $updated;
+        });
 
         return ['task_id' => $task->id, 'attached_count' => $attachedCount, 'task' => $task];
     }

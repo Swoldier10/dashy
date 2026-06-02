@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Services;
 
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
+use App\Domains\Tasks\Events\TaskDueDateChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -31,9 +32,24 @@ final class UpdateTaskDatesService
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ])->validate();
 
-        return DB::transaction(fn () => $this->update->execute($task, [
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
-        ]));
+        $oldEndDate = $task->end_date?->toIso8601String();
+        $assigneeIds = $task->assignees->pluck('id')->all();
+
+        return DB::transaction(function () use ($task, $actor, $validated, $oldEndDate, $assigneeIds): Task {
+            $updated = $this->update->execute($task, [
+                'start_date' => $validated['start_date'] ?? null,
+                'end_date' => $validated['end_date'] ?? null,
+            ]);
+
+            $newEndDate = $updated->end_date?->toIso8601String();
+
+            if ($newEndDate !== $oldEndDate) {
+                DB::afterCommit(fn () => event(TaskDueDateChanged::fromTask(
+                    $updated, $actor, $oldEndDate, $newEndDate, $assigneeIds,
+                )));
+            }
+
+            return $updated;
+        });
     }
 }

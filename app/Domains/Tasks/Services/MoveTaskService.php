@@ -6,6 +6,7 @@ use App\Domains\Projects\Services\AssertProjectStatusInProjectService;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\MoveTaskToStatusAction;
 use App\Domains\Tasks\Actions\ReorderTasksAction;
+use App\Domains\Tasks\Events\TaskStatusChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -48,9 +49,15 @@ final class MoveTaskService
         $targetIndex = array_search($task->id, array_map('intval', $targetOrderedIds), true);
         $newPosition = $targetIndex === false ? 0 : $targetIndex;
 
+        $statusChanges = $sourceStatusId !== $targetStatusId;
+        $oldStatusName = $task->status?->name;
+        $oldCategory = $task->status?->category?->value;
+        $assigneeIds = $task->assignees->pluck('id')->all();
+
         return DB::transaction(function () use (
-            $task, $targetStatusId, $newPosition,
+            $task, $actor, $targetStatusId, $newPosition,
             $sourceStatusId, $sourceOrderedIds, $targetOrderedIds,
+            $statusChanges, $oldStatusName, $oldCategory, $assigneeIds,
         ) {
             $moved = $this->move->execute($task, $targetStatusId, $newPosition);
 
@@ -59,7 +66,21 @@ final class MoveTaskService
             }
             $this->reorder->execute($task->project_id, $targetStatusId, $targetOrderedIds);
 
-            return $moved->refresh();
+            $moved = $moved->refresh();
+
+            if ($statusChanges) {
+                DB::afterCommit(fn () => event(TaskStatusChanged::fromTask(
+                    $moved,
+                    $actor,
+                    $oldStatusName,
+                    $oldCategory,
+                    (string) $moved->status?->name,
+                    (string) $moved->status?->category?->value,
+                    $assigneeIds,
+                )));
+            }
+
+            return $moved;
         });
     }
 }

@@ -29,6 +29,17 @@ class AppSidebarTest extends TestCase
         Livewire::test('app-sidebar')->assertOk();
     }
 
+    public function test_sidebar_renders_the_notification_bell_for_both_variants(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        // Nested Livewire children render on the page response, not in the
+        // parent component's isolated test render.
+        $this->get(route('chat'))
+            ->assertOk()
+            ->assertSee('data-test="notifications-bell"', false);
+    }
+
     public function test_sidebar_user_card_opens_settings_modal(): void
     {
         $this->actingAs(User::factory()->create());

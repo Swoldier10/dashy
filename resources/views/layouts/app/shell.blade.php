@@ -23,6 +23,9 @@
              bottom-nav Settings tab. --}}
         <livewire:settings-modal />
 
+        {{-- Global notification feed drawer opened from the bell. --}}
+        <livewire:notifications.panel />
+
         <livewire:time-tracking.running-timer-pill />
 
         <x-dashy.bottom-tab-bar />

@@ -5,6 +5,7 @@ namespace App\Domains\Tasks\Services;
 use App\Domains\Tasks\Actions\FindTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
 use App\Domains\Tasks\Enums\TaskPriority;
+use App\Domains\Tasks\Events\TaskPriorityChanged;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,20 @@ final class UpdateTaskPriorityService
             'priority' => ['required', Rule::enum(TaskPriority::class)],
         ])->validate();
 
-        return DB::transaction(fn () => $this->update->execute($task, [
-            'priority' => $validated['priority'],
-        ]));
+        $oldPriority = $task->priority?->value;
+        $newPriority = (string) $validated['priority'];
+        $assigneeIds = $task->assignees->pluck('id')->all();
+
+        return DB::transaction(function () use ($task, $actor, $oldPriority, $newPriority, $assigneeIds): Task {
+            $updated = $this->update->execute($task, ['priority' => $newPriority]);
+
+            if ($newPriority !== $oldPriority) {
+                DB::afterCommit(fn () => event(TaskPriorityChanged::fromTask(
+                    $updated, $actor, $oldPriority, $newPriority, $assigneeIds,
+                )));
+            }
+
+            return $updated;
+        });
     }
 }

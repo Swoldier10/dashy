@@ -6,8 +6,10 @@ use App\Domains\Auth\Services\LookupUserByEmailService;
 use App\Domains\Teams\Actions\AttachTeamMemberAction;
 use App\Domains\Teams\Actions\IsTeamMemberAction;
 use App\Domains\Teams\Enums\TeamRole;
+use App\Domains\Teams\Events\TeamMemberJoined;
 use App\Domains\Teams\Models\Team;
 use App\Models\User;
+use App\Support\Concerns\DetectsUniqueConstraintViolations;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -16,10 +18,13 @@ use Illuminate\Validation\ValidationException;
 
 final class AddTeamMemberService
 {
+    use DetectsUniqueConstraintViolations;
+
     public function __construct(
         private LookupUserByEmailService $findUserByEmail,
         private AttachTeamMemberAction $attachMember,
         private IsTeamMemberAction $isMember,
+        private ListTeamMemberIdsService $listTeamMemberIds,
     ) {}
 
     /**
@@ -73,12 +78,11 @@ final class AddTeamMemberService
                 throw $e;
             }
 
+            $otherMemberIds = array_values(array_diff($this->listTeamMemberIds->execute($team), [$target->id]));
+
+            DB::afterCommit(fn () => event(TeamMemberJoined::fromTeam($team, $target, $otherMemberIds)));
+
             return $target;
         });
-    }
-
-    private function isUniqueViolation(QueryException $e): bool
-    {
-        return ($e->getCode() === '23000') || ($e->errorInfo[0] ?? null) === '23000';
     }
 }
