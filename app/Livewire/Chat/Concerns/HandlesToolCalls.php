@@ -193,6 +193,8 @@ trait HandlesToolCalls
         return match ($toolName) {
             'create_task' => __('Task created.'),
             'create_project' => __('Project created.'),
+            'create_team' => __('Team created.'),
+            'invite_team_member' => __('Invitation sent.'),
             'update_task_name', 'update_task_description', 'update_task_priority',
             'update_task_dates' => __('Task updated.'),
             'move_task_to_status' => __('Task moved.'),

@@ -7,6 +7,7 @@ use App\Domains\Calendar\Services\FindEventService;
 use App\Domains\Projects\Services\FindProjectService;
 use App\Domains\Projects\Services\FindProjectStatusService;
 use App\Domains\Tasks\Services\FindTaskService;
+use App\Domains\Teams\Services\FindTeamForUserService;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Throwable;
@@ -26,6 +27,7 @@ final class ToolCardLabelResolver
         private FindTaskService $findTask,
         private FindUsersByIdsService $findUsers,
         private FindEventService $findEvent,
+        private FindTeamForUserService $findTeam,
     ) {}
 
     public function taskLabel(User $user, int $id): string
@@ -69,5 +71,12 @@ final class ToolCardLabelResolver
         } catch (Throwable) {
             return '#'.$id;
         }
+    }
+
+    public function teamLabel(User $user, int $id): string
+    {
+        $team = $this->findTeam->execute($user, $id);
+
+        return $team !== null ? '"'.Str::limit((string) $team->name, 40).'"' : '#'.$id;
     }
 }

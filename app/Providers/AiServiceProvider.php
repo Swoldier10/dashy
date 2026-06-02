@@ -15,6 +15,7 @@ use App\Domains\Chat\Ai\Tools\BulkMoveTasksToStatusTool;
 use App\Domains\Chat\Ai\Tools\CreateEventTool;
 use App\Domains\Chat\Ai\Tools\CreateProjectTool;
 use App\Domains\Chat\Ai\Tools\CreateTaskTool;
+use App\Domains\Chat\Ai\Tools\CreateTeamTool;
 use App\Domains\Chat\Ai\Tools\DeleteEventTool;
 use App\Domains\Chat\Ai\Tools\DeleteProjectStatusTool;
 use App\Domains\Chat\Ai\Tools\DeleteProjectTool;
@@ -24,6 +25,7 @@ use App\Domains\Chat\Ai\Tools\ForgetTool;
 use App\Domains\Chat\Ai\Tools\GetProjectOverviewTool;
 use App\Domains\Chat\Ai\Tools\GetTaskTool;
 use App\Domains\Chat\Ai\Tools\GetTimeSummaryTool;
+use App\Domains\Chat\Ai\Tools\InviteTeamMemberTool;
 use App\Domains\Chat\Ai\Tools\ListEventsTool;
 use App\Domains\Chat\Ai\Tools\ListMemoriesTool;
 use App\Domains\Chat\Ai\Tools\ListMyOpenTasksTool;
@@ -62,6 +64,7 @@ class AiServiceProvider extends ServiceProvider
             // Existing confirm_write + structural tools.
             $registry->register($app->make(CreateTaskTool::class));
             $registry->register($app->make(CreateProjectTool::class));
+            $registry->register($app->make(CreateTeamTool::class));
             $registry->register($app->make(AskUserChoiceTool::class));
             $registry->register($app->make(PlanTool::class));
 
@@ -98,6 +101,7 @@ class AiServiceProvider extends ServiceProvider
             $registry->register($app->make(AddProjectStatusTool::class));
             $registry->register($app->make(RenameProjectStatusTool::class));
             $registry->register($app->make(DeleteProjectStatusTool::class));
+            $registry->register($app->make(InviteTeamMemberTool::class));
 
             // Phase 1F — bulk + destructive tools. The presenter renders these
             // through the bulk-write / destructive card variants so the user

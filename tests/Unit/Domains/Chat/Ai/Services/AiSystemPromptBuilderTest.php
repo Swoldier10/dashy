@@ -52,4 +52,16 @@ class AiSystemPromptBuilderTest extends TestCase
         $this->assertStringContainsString('imperative German title', $prompt);
         $this->assertStringContainsString('3–8 words', $prompt);
     }
+
+    public function test_prompt_includes_create_team_and_invite_member_rules(): void
+    {
+        $user = User::factory()->create();
+
+        $prompt = app(AiSystemPromptBuilder::class)->build($user);
+
+        $this->assertStringContainsString('Rules for create_team:', $prompt);
+        $this->assertStringContainsString('do NOT translate it to German', $prompt);
+        $this->assertStringContainsString('Rules for invite_team_member:', $prompt);
+        $this->assertStringContainsString('NEVER invent, guess', $prompt);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Domains\Chat\Ai\Services;
 
 use App\Domains\Chat\Ai\Contracts\PresentsToolCard;
+use App\Domains\Teams\Enums\TeamRole;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -186,6 +187,8 @@ final class AiToolCardPresenter
     private function compactWriteTitle(string $name): string
     {
         return match ($name) {
+            'create_team' => __('Create team'),
+            'invite_team_member' => __('Invite member'),
             'update_task_name' => __('Rename task'),
             'update_task_description' => __('Update task description'),
             'update_task_priority' => __('Change priority'),
@@ -220,6 +223,18 @@ final class AiToolCardPresenter
         $projectLabel = isset($args['project_id']) ? $this->labels->projectLabel($user, (int) $args['project_id']) : null;
 
         return match ($name) {
+            'create_team' => isset($args['logo_attachment']) && is_array($args['logo_attachment'])
+                ? __('Create team ":name" with the attached image as its logo', [
+                    'name' => Str::limit((string) ($args['name'] ?? ''), 60),
+                ])
+                : __('Create team ":name"', [
+                    'name' => Str::limit((string) ($args['name'] ?? ''), 60),
+                ]),
+            'invite_team_member' => __('Invite :email to :team as :role', [
+                'email' => (string) ($args['email'] ?? '?'),
+                'team' => isset($args['team_id']) ? $this->labels->teamLabel($user, (int) $args['team_id']) : '?',
+                'role' => (string) ($args['role'] ?? TeamRole::Member->value),
+            ]),
             'update_task_name' => __(':task → :new', [
                 'task' => $taskLabel ?? '?',
                 'new' => Str::limit((string) ($args['name'] ?? ''), 60),
@@ -284,6 +299,8 @@ final class AiToolCardPresenter
     private function compactWriteIcon(string $name): string
     {
         return match ($name) {
+            'create_team' => 'user-group',
+            'invite_team_member' => 'envelope',
             'update_task_name', 'update_task_description' => 'pencil-square',
             'update_task_priority' => 'flag',
             'update_task_dates' => 'calendar-days',
@@ -302,6 +319,8 @@ final class AiToolCardPresenter
     private function isCompactWriteName(string $name): bool
     {
         return in_array($name, [
+            'create_team',
+            'invite_team_member',
             'update_task_name',
             'update_task_description',
             'update_task_priority',

@@ -190,6 +190,84 @@ class AiToolCardPresenterTest extends TestCase
         $this->assertSame([$user->id], $view['assignee_user_ids']);
     }
 
+    public function test_presents_create_team_compact_with_logo_mention(): void
+    {
+        $user = User::factory()->create();
+
+        $view = app(AiToolCardPresenter::class)->present([
+            'name' => 'create_team',
+            'status' => 'pending',
+            'arguments' => [
+                'name' => 'Marketing Crew',
+                'logo_attachment' => [
+                    'path' => 'chat-attachments/1/_pending/logo.png',
+                    'url' => 'https://test/logo.png',
+                    'mime' => 'image/png',
+                    'name' => 'logo.png',
+                ],
+            ],
+        ], $user);
+
+        $this->assertSame('create_team', $view['name']);
+        $this->assertSame('compact_write', $view['mode']);
+        $this->assertSame('Create team', $view['title']);
+        $this->assertStringContainsString('Marketing Crew', $view['summary']);
+        $this->assertStringContainsString('logo', $view['summary']);
+    }
+
+    public function test_presents_create_team_compact_without_logo(): void
+    {
+        $user = User::factory()->create();
+
+        $view = app(AiToolCardPresenter::class)->present([
+            'name' => 'create_team',
+            'status' => 'pending',
+            'arguments' => ['name' => 'Marketing Crew'],
+        ], $user);
+
+        $this->assertSame('compact_write', $view['mode']);
+        $this->assertStringContainsString('Marketing Crew', $view['summary']);
+        $this->assertStringNotContainsString('logo', $view['summary']);
+    }
+
+    public function test_presents_invite_team_member_compact_with_team_label(): void
+    {
+        [$user, $team] = $this->userWithTeam('Acme');
+
+        $view = app(AiToolCardPresenter::class)->present([
+            'name' => 'invite_team_member',
+            'status' => 'pending',
+            'arguments' => [
+                'team_id' => $team->id,
+                'email' => 'newbie@example.com',
+                'role' => 'member',
+            ],
+        ], $user);
+
+        $this->assertSame('invite_team_member', $view['name']);
+        $this->assertSame('compact_write', $view['mode']);
+        $this->assertSame('Invite member', $view['title']);
+        $this->assertStringContainsString('newbie@example.com', $view['summary']);
+        $this->assertStringContainsString('"Acme"', $view['summary']);
+        $this->assertStringContainsString('member', $view['summary']);
+    }
+
+    public function test_presents_invite_team_member_falls_back_to_hash_id_for_unknown_team(): void
+    {
+        $user = User::factory()->create();
+
+        $view = app(AiToolCardPresenter::class)->present([
+            'name' => 'invite_team_member',
+            'status' => 'pending',
+            'arguments' => [
+                'team_id' => 999999,
+                'email' => 'x@y.zz',
+            ],
+        ], $user);
+
+        $this->assertStringContainsString('#999999', $view['summary']);
+    }
+
     public function test_presents_ask_user_choice_pending_with_options(): void
     {
         $user = User::factory()->create();
